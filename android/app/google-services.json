@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "736317810114",
+    "project_id": "connixia-app",
+    "storage_bucket": "connixia-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:736317810114:android:03d5da1890fd1ec372e25b",
+        "android_client_info": {
+          "package_name": "mx.edu.ittepic.connixia"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCUzcCV_HJvFQn8Vu_or5oHOcGap3f0Uyo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
