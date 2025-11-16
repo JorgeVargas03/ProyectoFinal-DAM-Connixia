@@ -1,8 +1,23 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Permisos básicos -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Ubicación -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <!-- Notificaciones (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- (Opcional) Ubicación en segundo plano -->
+    <!-- <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/> -->
     <application
         android:label="Connixia"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+
+        <!-- API Key de Google Maps -->
+        <meta-data
+        android:name="com.google.android.geo.API_KEY"
+        android:value="AQUI_TU_API_KEY"/>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

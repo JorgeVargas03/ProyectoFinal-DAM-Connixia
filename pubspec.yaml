@@ -38,6 +38,12 @@ dependencies:
   firebase_core: ^4.2.1
   cloud_firestore: ^6.1.0
   flutter_dotenv: ^6.0.0
+  firebase_auth: ^6.1.2
+  firebase_messaging: ^16.0.4
+  flutter_local_notifications: ^19.5.0
+  google_maps_flutter: ^2.14.0
+  geolocator: ^14.0.2
+  shake: ^3.0.0
 
 dev_dependencies:
   flutter_test:
