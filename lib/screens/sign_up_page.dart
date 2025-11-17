@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import '../controllers/auth_controller.dart';
 import 'home_page.dart';
 
@@ -49,6 +50,18 @@ class _SignUpPageState extends State<SignUpPage> {
       _showMessage(err);
     }
   }
+
+  Future<void> _onGoogleSignIn() async {
+    setState(() => _loading = true);
+    final err = await _authCtrl.signInWithGoogle();
+    setState(() => _loading = false);
+    if (err == null) {
+      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const HomePage()));
+    } else {
+      _showMessage(err);
+    }
+  }
+
 
   @override
   void dispose() {
@@ -169,6 +182,41 @@ class _SignUpPageState extends State<SignUpPage> {
                             child: _loading
                                 ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                                 : const Text('Crear cuenta', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(child: Divider(color: Colors.grey[400])),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: Text('O continúa con', style: TextStyle(color: Colors.grey[600])),
+                            ),
+                            Expanded(child: Divider(color: Colors.grey[400])),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: OutlinedButton.icon(
+                            onPressed: _loading ? null : _onGoogleSignIn,
+                            style: OutlinedButton.styleFrom(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              side: BorderSide(color: Colors.grey[300]!),
+                              backgroundColor: Colors.white,
+                            ),
+                            icon: SvgPicture.network(
+                              'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
+                              height: 24,
+                              width: 24,
+                              placeholderBuilder: (context) => const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            ),
+                            label: const Text('Continuar con Google', style: TextStyle(color: Colors.black87, fontSize: 16)),
                           ),
                         ),
                         const SizedBox(height: 16),

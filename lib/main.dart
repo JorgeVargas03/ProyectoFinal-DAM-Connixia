@@ -21,6 +21,7 @@ class MyApp extends StatelessWidget {
       title: 'MeetUp Geo',
       theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo)),
       home: const AuthGate(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
