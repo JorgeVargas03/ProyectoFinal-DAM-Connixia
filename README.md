@@ -1,6 +1,3 @@
-A continuación un `README.md` propuesto y listo para pegar en el archivo 'README.md'.
-
-
 # ProyectoFinal Connixia
 
 Aplicación Flutter (Android/iOS) para gestión de autenticación con correo/contraseña e inicio de sesión con Google usando Firebase.
