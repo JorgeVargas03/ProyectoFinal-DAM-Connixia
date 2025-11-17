@@ -1,7 +1,3 @@
-# Connixia App
-
-Aquí tienes una sección lista para pegar en `README.md` como descripción del proyecto y alcance del MVP.
-
 # Connixia — Encuentros geolocalizados
 
 ## Descripción del proyecto
