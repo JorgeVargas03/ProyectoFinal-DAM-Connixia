@@ -1,6 +1,53 @@
-# ProyectoFinal Connixia
+# Connixia App
 
-Aplicación Flutter (Android/iOS) para gestión de autenticación con correo/contraseña e inicio de sesión con Google usando Firebase.
+Aquí tienes una sección lista para pegar en `README.md` como descripción del proyecto y alcance del MVP.
+
+# Connixia — Encuentros geolocalizados
+
+## Descripción del proyecto
+Connixia es una aplicación móvil que facilita la creación y participación en eventos o reuniones geolocalizadas. Permite a los usuarios registrarse e iniciar sesión, proponer puntos de encuentro en un mapa (Google Maps), establecer horarios y confirmar asistencia. La app guía a cada participante con la ruta de navegación hasta el punto marcado y, al llegar, permite confirmar la llegada mediante el gesto de sacudir el dispositivo (shake), notificando automáticamente al creador del evento o al resto de asistentes.
+
+El objetivo es promover nuevas amistades y la convivencia, facilitando que cualquier persona encuentre compañía para actividades cuando sus contactos habituales no estén disponibles.
+
+## Objetivos
+- Reducir la fricción para organizar y sumarse a reuniones cercanas.
+- Ofrecer navegación integrada hasta el punto de encuentro.
+- Confirmar la llegada de forma sencilla mediante el sensor de movimiento.
+- Mantener un control claro de asistencia y notificaciones.
+
+## Características clave (MVP)
+- Gestión de cuentas: registro, inicio de sesión, edición de perfil y baja de cuenta con correo electrónico.
+- Eventos geolocalizados: creación de eventos con ubicación en mapa y hora definida.
+- Asistencia: los usuarios pueden marcar que asistirán.
+- Navegación: visualización de la ruta hacia el punto de encuentro usando servicios de mapas.
+- Confirmación de llegada: detección de “shake” para notificar llegada en el destino.
+- Notificaciones: aviso al creador y/o asistentes cuando un participante llega.
+
+## Flujos principales
+1. Crear evento: ubicación en mapa + fecha/hora + descripción.
+2. Unirse a evento: marcar asistencia desde la ficha del evento.
+3. Navegar al punto: abrir el mapa embebido y seguir la ruta sugerida.
+4. Confirmar llegada: sacudir el dispositivo en el punto marcado para enviar notificación.
+5. Gestión de cuenta: editar perfil o solicitar baja de cuenta.
+
+## Público objetivo
+- Personas que desean conocer gente nueva, organizar planes y no depender de la disponibilidad de su círculo cercano.
+
+## Tecnologías previstas
+- Flutter/Dart (app móvil).
+- Firebase Auth (gestión de cuentas).
+- Google Maps SDK para Flutter (mapa y rutas).
+- Sensores del dispositivo para gesto “shake”.
+- Sistema de notificaciones (según plataforma).
+
+## Permisos y privacidad
+- Ubicación en primer plano para mostrar el mapa y calcular la ruta.
+- Notificaciones para avisos de llegada y cambios de estado.
+- No se requiere permiso específico para el gesto “shake” (uso de acelerómetro).
+
+## Alcance y estado
+- MVP enfocado en autenticación, creación/unión a eventos, navegación y confirmación de llegada.
+- Roadmap: recuperación de contraseña, chat básico por evento, filtros por categoría/distancia, modo oscuro, i18n.
 
 ## Características
 - Autenticación con correo y contraseña (Firebase Auth).
@@ -15,7 +62,6 @@ Aplicación Flutter (Android/iOS) para gestión de autenticación con correo/con
 - Proyecto de Firebase con Auth habilitado (Email/Password y Google).
 - Archivos de configuración:
   - Android: 'android/app/google-services.json'
-  - iOS: 'ios/Runner/GoogleService-Info.plist'
 - En Android, registra SHA\-1 y SHA\-256 en Firebase.
 
 ## Dependencias principales
