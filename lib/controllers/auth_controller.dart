@@ -77,7 +77,7 @@ class AuthController {
     try {
       // Inicializa GoogleSignIn con tu serverClientId
       await _googleSignIn.initialize(
-        serverClientId: '736317810114-qvtr9pe8ltcagkntr4be1hi27bd6p4ga.apps.googleusercontent.com',
+        serverClientId: '736317810114-v6bmruruuluns7o1lmn76l3d3pva98i5.apps.googleusercontent.com',
       );
 
       // Autentica (versión 7 usa authenticate en lugar de signIn)
