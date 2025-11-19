@@ -65,7 +65,7 @@ class _ProfilePageState extends State<ProfilePage> {
         return;
       }
 
-      final filename = 'profile_${_user!.uid}_${DateTime.now().millisecondsSinceEpoch}';
+      final filename = 'profile_${_user!.uid}';
 
       final result = await ImageUploadService.uploadProfileImage(
         File(pickedFile.path),
