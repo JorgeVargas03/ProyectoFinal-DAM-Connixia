@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:proyectofinal_connixia/screens/configuration_page.dart';
 import 'package:shake/shake.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -270,7 +271,12 @@ class _HomePageState extends State<HomePage> {
               ListTile(
                 leading: const Icon(Icons.settings),
                 title: const Text('Configuración'),
-                onTap: () {},
+                onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ConfigurationPage()),
+                  );
+                },
               ),
               const Spacer(),
               ListTile(
