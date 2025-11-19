@@ -1,0 +1,54 @@
+import 'dart:io';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:mime/mime.dart';
+import 'package:http_parser/http_parser.dart';
+
+class ImageUploadService {
+  static const String _baseUrl = 'https://api-adana-pilates.onrender.com/adana-api/v1/users';
+
+  static Future<Map<String, dynamic>> uploadProfileImage(File imageFile, String filename) async {
+    try {
+      var uri = Uri.parse('$_baseUrl/upload/image');
+      var request = http.MultipartRequest('POST', uri);
+
+      final mimeType = lookupMimeType(imageFile.path);
+      final mimeTypeData = mimeType?.split('/');
+
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'image',
+          imageFile.path,
+          contentType: mimeTypeData != null
+              ? MediaType(mimeTypeData[0], mimeTypeData[1])
+              : null,
+        ),
+      );
+
+      request.fields['filename'] = filename;
+
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        return {
+          'success': true,
+          'profileImageUrl': responseData['profileImageUrl'],
+          'message': responseData['message'],
+        };
+      } else {
+        final errorData = json.decode(response.body);
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Error al subir la imagen',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Error de conexión: $e',
+      };
+    }
+  }
+}

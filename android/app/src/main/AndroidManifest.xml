@@ -8,6 +8,9 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <!-- (Opcional) Ubicación en segundo plano -->
     <!-- <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/> -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.CAMERA"/>
+    
     <application
         android:label="Connixia"
         android:name="${applicationName}"
