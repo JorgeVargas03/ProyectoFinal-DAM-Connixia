@@ -124,4 +124,43 @@ class AuthController {
     }
   }
 
+  Future<String?> sendPasswordReset(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+      return null;
+    } on FirebaseAuthException catch (e) {
+      return e.message ?? 'Error al enviar email de recuperación.';
+    }
+  }
+
+  Future<String?> deleteAccount() async {
+    final user = _auth.currentUser;
+
+    if (user == null) return 'No hay usuario autenticado.';
+
+    try {
+      await user.delete();
+      return null;
+    } on FirebaseAuthException catch (e) {
+      // Necesita verificarse recientemente
+      if (e.code == 'requires-recent-login') {
+        try {
+          if (user.providerData.any((p) => p.providerId == 'google.com')) {
+            // Verificarse con Google
+            await signInWithGoogle();
+          } else {
+            return 'Debes volver a iniciar sesión para eliminar tu cuenta.';
+          }
+
+          // Intentar eliminar otra vez
+          await user.delete();
+          return null;
+        } catch (e) {
+          return 'No se pudo re-autenticar. Intenta cerrar sesión y volver a iniciar sesión.';
+        }
+      }
+      return e.message ?? 'Error al eliminar la cuenta.';
+    }
+  }
+
 }
