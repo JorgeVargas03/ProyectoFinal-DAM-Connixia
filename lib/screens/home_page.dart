@@ -282,18 +282,6 @@ class _HomePageState extends State<HomePage> {
                   );
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.settings),
-                title: const Text('Configuración'),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const ConfigurationPage(),
-                    ),
-                  );
-                },
-              ),
               const Spacer(),
               ListTile(
                 leading: const Icon(Icons.logout),
