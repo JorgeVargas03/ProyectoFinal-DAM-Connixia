@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_localizations/flutter_localizations.dart'; // ← AGREGAR
 import 'controllers/notification_controller.dart';
 import 'providers/theme_provider.dart';
 import 'screens/sign_in_page.dart';
@@ -44,6 +45,16 @@ class MyApp extends StatelessWidget {
           ),
         ),
         themeMode: themeProvider.themeMode,
+        // ← AGREGAR estas 3 líneas:
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [
+          Locale('es', ''),
+          Locale('en', ''),
+        ],
         home: const AuthGate(),
         debugShowCheckedModeBanner: false,
       ),

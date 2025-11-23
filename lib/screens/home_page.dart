@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:proyectofinal_connixia/screens/configuration_page.dart';
 import 'package:shake/shake.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -37,13 +36,12 @@ class _HomePageState extends State<HomePage> {
   Future<void> _init() async {
     _myPos = await _location.getCurrentPosition();
     if (mounted) setState(() {});
-
     _shake = ShakeDetector.autoStart(onPhoneShake: (_) => _onArrivedShake());
-
     FirebaseMessaging.onMessage.listen((msg) {
       final n = msg.notification;
-      if (n != null)
+      if (n != null) {
         _notifications.showLocal(n.title ?? 'Notificación', n.body ?? '');
+      }
     });
   }
 
@@ -59,11 +57,11 @@ class _HomePageState extends State<HomePage> {
           .collection('arrivals')
           .doc(uid)
           .set({
-            'uid': uid,
-            'at': FieldValue.serverTimestamp(),
-            'lat': _myPos?.latitude,
-            'lng': _myPos?.longitude,
-          }, SetOptions(merge: true));
+        'uid': uid,
+        'at': FieldValue.serverTimestamp(),
+        'lat': _myPos?.latitude,
+        'lng': _myPos?.longitude,
+      }, SetOptions(merge: true));
       await _notifications.showLocal(
         'Llegada confirmada',
         'Se notificó tu arribo al evento.',
@@ -80,8 +78,150 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  void _toggleMap() {
-    setState(() => _showMap = !_showMap);
+  void _toggleMap() => setState(() => _showMap = !_showMap);
+
+  void _openProfile() {
+    Navigator.of(context).pop();
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const ProfilePage()),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      drawer: _buildDrawer(),
+      body: _showMap ? _buildMapView() : _buildDashboard(context),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton.extended(
+            heroTag: 'map',
+            onPressed: _toggleMap,
+            icon: Icon(_showMap ? Icons.dashboard : Icons.map),
+            label: Text(_showMap ? 'Panel' : 'Mapa'),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton.extended(
+            heroTag: 'arrive',
+            onPressed: _onArrivedShake,
+            icon: const Icon(Icons.check_circle_outline),
+            label: const Text('Llegué'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Drawer _buildDrawer() {
+    return Drawer(
+      child: SafeArea(
+        child: Column(
+          children: [
+            StreamBuilder<User?>(
+              stream: FirebaseAuth.instance.userChanges(),
+              builder: (context, snapshot) {
+                final u = snapshot.data ?? FirebaseAuth.instance.currentUser;
+                final name = (u?.displayName ?? '').trim();
+                final email = (u?.email ?? '').trim();
+                final hasPhoto = u?.photoURL != null && u!.photoURL!.isNotEmpty;
+                final initial = (name.isNotEmpty
+                    ? name[0]
+                    : (email.isNotEmpty ? email[0] : 'U'))
+                    .toUpperCase();
+                return UserAccountsDrawerHeader(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Theme.of(context).colorScheme.primary,
+                        Theme.of(context).colorScheme.primaryContainer,
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  accountName: Text(
+                    name.isNotEmpty ? name : 'Usuario',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  accountEmail: Text(email),
+                  currentAccountPicture: InkWell(
+                    onTap: _openProfile,
+                    borderRadius: BorderRadius.circular(40),
+                    child: CircleAvatar(
+                      backgroundColor: Colors.white,
+                      backgroundImage: hasPhoto ? NetworkImage(u!.photoURL!) : null,
+                      child: hasPhoto
+                          ? null
+                          : Text(
+                        initial,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.indigo,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.home),
+              title: const Text('Inicio'),
+              onTap: () => Navigator.of(context).pop(),
+            ),
+            ListTile(
+              leading: const Icon(Icons.person),
+              title: const Text('Mi perfil'),
+              onTap: _openProfile,
+            ),
+            ListTile(
+              leading: const Icon(Icons.event),
+              title: const Text('Mis eventos'),
+              subtitle: const Text('Próximamente'),
+              onTap: () {
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Función en desarrollo')),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.notifications),
+              title: const Text('Notificaciones'),
+              subtitle: const Text('Próximamente'),
+              onTap: () {
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Función en desarrollo')),
+                );
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.help_outline),
+              title: const Text('Ayuda'),
+              onTap: () {
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Contacta soporte@connixia.app')),
+                );
+              },
+            ),
+            const Spacer(),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: const Text('Cerrar sesión', style: TextStyle(color: Colors.red)),
+              onTap: _auth.signOut,
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildDashboard(BuildContext context) {
@@ -93,24 +233,28 @@ class _HomePageState extends State<HomePage> {
           flexibleSpace: FlexibleSpaceBar(
             title: const Text('Bienvenido'),
             background: Container(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-              child: const Center(
-                child: Text(
-                  'Encuentra y crea eventos cerca de ti',
-                  textAlign: TextAlign.center,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Theme.of(context).colorScheme.primary,
+                    Theme.of(context).colorScheme.primaryContainer,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
               ),
             ),
           ),
           actions: [
             IconButton(
-              icon: Icon(_showMap ? Icons.map : Icons.map_outlined),
+              icon: Icon(_showMap ? Icons.dashboard : Icons.map),
               onPressed: _toggleMap,
-              tooltip: 'Ver mapa',
+              tooltip: _showMap ? 'Ver panel' : 'Ver mapa',
             ),
             IconButton(
-              onPressed: _auth.signOut,
               icon: const Icon(Icons.logout),
+              onPressed: _auth.signOut,
+              tooltip: 'Cerrar sesión',
             ),
           ],
         ),
@@ -118,97 +262,91 @@ class _HomePageState extends State<HomePage> {
           padding: const EdgeInsets.all(12),
           sliver: SliverList(
             delegate: SliverChildListDelegate([
-              // Tarjetas de acciones rápidas
-              Row(
-                children: [
-                  Expanded(
-                    child: Card(
-                      elevation: 3,
-                      child: InkWell(
-                        onTap: () {
-                          // abrir pantalla de crear evento (placeholder)
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
-                              Icon(Icons.add_location_alt, size: 36),
-                              SizedBox(height: 8),
-                              Text(
-                                'Crear evento',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text('Propón un punto en el mapa y una hora'),
-                            ],
+              Card(
+                elevation: 3,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 30,
+                        child: Text(
+                          _userInitial(),
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Card(
-                      elevation: 3,
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
-                            Icon(Icons.people, size: 36),
-                            SizedBox(height: 8),
-                            Text(
-                              'Buscar gente',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              'Une con personas interesadas en planear salidas',
-                            ),
-                          ],
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Text(
+                          'Aquí irá tu resumen.\n(Sección personalizable).',
+                          style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Próximos eventos',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              // Lista demo de eventos
-              Card(
-                child: ListTile(
-                  leading: const Icon(Icons.location_on),
-                  title: const Text('Café en la plaza'),
-                  subtitle: const Text('Hoy · 18:30'),
-                  trailing: ElevatedButton(
-                    onPressed: () => setState(() => _showMap = true),
-                    child: const Text('Ver en mapa'),
+                    ],
                   ),
                 ),
               ),
+              const SizedBox(height: 16),
               Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 child: ListTile(
-                  leading: const Icon(Icons.hiking),
-                  title: const Text('Caminata por el parque'),
-                  subtitle: const Text('Mañana · 09:00'),
-                  trailing: ElevatedButton(
-                    onPressed: () => setState(() => _showMap = true),
-                    child: const Text('Ver en mapa'),
-                  ),
+                  leading: const Icon(Icons.check_circle_outline),
+                  title: const Text('Confirmar llegada'),
+                  subtitle: const Text('También puedes agitar el teléfono'),
+                  onTap: _onArrivedShake,
+                  trailing: _postingArrival
+                      ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                      : const Icon(Icons.navigate_next),
                 ),
               ),
-              const SizedBox(height: 80),
+              const SizedBox(height: 16),
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: ListTile(
+                  leading: const Icon(Icons.event),
+                  title: const Text('Eventos'),
+                  subtitle: const Text('Módulo próximamente'),
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Eventos aún no disponibles')),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: ListTile(
+                  leading: const Icon(Icons.notifications),
+                  title: const Text('Notificaciones'),
+                  subtitle: const Text('Centro próximamente'),
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Centro de notificaciones en desarrollo')),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 120),
             ]),
           ),
         ),
@@ -217,130 +355,17 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildMapView() {
-    return _myPos == null
-        ? const Center(child: CircularProgressIndicator())
-        : GoogleMap(
-            myLocationEnabled: true,
-            myLocationButtonEnabled: true,
-            initialCameraPosition: CameraPosition(target: _myPos!, zoom: 15),
-            onMapCreated: (c) => _mapCtrl = c,
-            markers: {
-              Marker(markerId: const MarkerId('yo'), position: _myPos!),
-            },
-          );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      drawer: Drawer(
-        child: SafeArea(
-          child: Column(
-            children: [
-              StreamBuilder<User?>(
-                stream: FirebaseAuth.instance.userChanges(),
-                builder: (context, snapshot) {
-                  final u = snapshot.data ?? FirebaseAuth.instance.currentUser;
-                  final name = (u?.displayName ?? '').trim();
-                  final email = (u?.email ?? '').trim();
-                  final hasPhoto =
-                      u?.photoURL != null && u!.photoURL!.isNotEmpty;
-                  final initial =
-                      (name.isNotEmpty
-                              ? name[0]
-                              : (email.isNotEmpty ? email[0] : 'U'))
-                          .toUpperCase();
-
-                  return UserAccountsDrawerHeader(
-                    accountName: Text(name.isNotEmpty ? name : 'Usuario'),
-                    accountEmail: Text(email),
-                    currentAccountPicture: CircleAvatar(
-                      backgroundColor: Colors.grey[300],
-                      backgroundImage: hasPhoto
-                          ? NetworkImage(u.photoURL!)
-                          : null,
-                      child: hasPhoto
-                          ? null
-                          : Text(
-                              initial,
-                              style: const TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.person),
-                title: const Text('Perfil'),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const ProfilePage()),
-                  );
-                },
-              ),
-              const Spacer(),
-              ListTile(
-                leading: const Icon(Icons.logout),
-                title: const Text('Cerrar sesión'),
-                onTap: _auth.signOut,
-              ),
-            ],
-          ),
-        ),
-      ),
-      // FIX: acotar tamaño para evitar altura infinita
-      body: SizedBox.expand(
-        child: AnimatedCrossFade(
-          firstChild: SizedBox.expand(child: _buildDashboard(context)),
-          secondChild: SizedBox.expand(child: _buildMapView()),
-          crossFadeState: _showMap
-              ? CrossFadeState.showSecond
-              : CrossFadeState.showFirst,
-          duration: const Duration(milliseconds: 350),
-          // Opcional: mantener tamaño durante transición
-          layoutBuilder: (topChild, topKey, bottomChild, bottomKey) {
-            return Stack(
-              fit: StackFit.expand,
-              children: [
-                Positioned.fill(key: bottomKey, child: bottomChild),
-                Positioned.fill(key: topKey, child: topChild),
-              ],
-            );
-          },
-        ),
-      ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton.extended(
-            heroTag: 'create',
-            onPressed: () {
-              // Abrir creación de evento (pendiente)
-            },
-            icon: const Icon(Icons.add_location_alt),
-            label: const Text('Crear evento'),
-          ),
-          const SizedBox(height: 12),
-          FloatingActionButton.extended(
-            heroTag: 'arrive',
-            onPressed: _onArrivedShake,
-            icon: const Icon(Icons.check_circle),
-            label: const Text('Confirmar llegada'),
-          ),
-          const SizedBox(height: 12),
-          FloatingActionButton(
-            heroTag: 'toggleMap',
-            onPressed: _toggleMap,
-            child: Icon(_showMap ? Icons.home : Icons.map),
-            tooltip: _showMap ? 'Volver al inicio' : 'Ver mapa',
-          ),
-        ],
-      ),
+    if (_myPos == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return GoogleMap(
+      myLocationEnabled: true,
+      myLocationButtonEnabled: true,
+      initialCameraPosition: CameraPosition(target: _myPos!, zoom: 15),
+      onMapCreated: (c) => _mapCtrl = c,
+      markers: {
+        Marker(markerId: const MarkerId('yo'), position: _myPos!),
+      },
     );
   }
 
