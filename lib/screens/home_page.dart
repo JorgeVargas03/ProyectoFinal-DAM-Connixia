@@ -243,17 +243,31 @@ class _HomePageState extends State<HomePage> {
                   final u = snapshot.data ?? FirebaseAuth.instance.currentUser;
                   final name = (u?.displayName ?? '').trim();
                   final email = (u?.email ?? '').trim();
+                  final hasPhoto =
+                      u?.photoURL != null && u!.photoURL!.isNotEmpty;
                   final initial =
-                  (name.isNotEmpty ? name[0] : (email.isNotEmpty ? email[0] : 'U')).toUpperCase();
+                      (name.isNotEmpty
+                              ? name[0]
+                              : (email.isNotEmpty ? email[0] : 'U'))
+                          .toUpperCase();
 
                   return UserAccountsDrawerHeader(
                     accountName: Text(name.isNotEmpty ? name : 'Usuario'),
                     accountEmail: Text(email),
                     currentAccountPicture: CircleAvatar(
-                      child: Text(
-                        initial,
-                        style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w600),
-                      ),
+                      backgroundColor: Colors.grey[300],
+                      backgroundImage: hasPhoto
+                          ? NetworkImage(u.photoURL!)
+                          : null,
+                      child: hasPhoto
+                          ? null
+                          : Text(
+                              initial,
+                              style: const TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                     ),
                   );
                 },
@@ -274,7 +288,9 @@ class _HomePageState extends State<HomePage> {
                 onTap: () {
                   Navigator.of(context).pop();
                   Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const ConfigurationPage()),
+                    MaterialPageRoute(
+                      builder: (_) => const ConfigurationPage(),
+                    ),
                   );
                 },
               ),
@@ -293,7 +309,9 @@ class _HomePageState extends State<HomePage> {
         child: AnimatedCrossFade(
           firstChild: SizedBox.expand(child: _buildDashboard(context)),
           secondChild: SizedBox.expand(child: _buildMapView()),
-          crossFadeState: _showMap ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          crossFadeState: _showMap
+              ? CrossFadeState.showSecond
+              : CrossFadeState.showFirst,
           duration: const Duration(milliseconds: 350),
           // Opcional: mantener tamaño durante transición
           layoutBuilder: (topChild, topKey, bottomChild, bottomKey) {

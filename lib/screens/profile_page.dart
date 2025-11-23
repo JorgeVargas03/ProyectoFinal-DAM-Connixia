@@ -130,21 +130,30 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _removeProfileImage() async {
     if (_user == null) return;
 
+    final filename = 'profile_${_user!.uid}';
+
     setState(() => _isUpdatingImage = true);
 
     try {
-      await _user!.updatePhotoURL(null);
-      await FirebaseAuth.instance.currentUser?.reload();
 
-      _loadUser();
+      final result = await ImageUploadService.deleteProfileImage(filename);
+      if (result['success']) {
+        await _user!.updatePhotoURL(null);
+        await FirebaseAuth.instance.currentUser?.reload();
 
-      _showSnackBar('Foto de perfil eliminada');
+        _loadUser(); // Recarga los datos del usuario para actualizar la UI.
+
+        _showSnackBar('Foto de perfil eliminada correctamente');
+      } else {
+        _showSnackBar(result['message'], isError: true);
+      }
     } catch (e) {
-      _showSnackBar('Error: $e', isError: true);
+      _showSnackBar('Error al eliminar la foto de perfil: $e', isError: true);
     } finally {
       setState(() => _isUpdatingImage = false);
     }
   }
+
 
   Future<void> _saveProfile() async {
     final newName = _displayNameCtrl.text.trim();

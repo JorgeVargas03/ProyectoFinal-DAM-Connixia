@@ -51,4 +51,30 @@ class ImageUploadService {
       };
     }
   }
+
+  /// Borra una imagen de perfil de Cloudinary.
+  /// Recibe el ID de usuario de Firebase para construir el publicId.
+  static Future<Map<String, dynamic>> deleteProfileImage(String firebaseUserId) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/delete/image/$firebaseUserId');
+      final response = await http.delete(uri);
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': 'Imagen eliminada correctamente',
+        };
+      } else {
+        return {
+          'success': false,
+          'message': 'Error al eliminar la imagen en el servidor',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Error de conexión al intentar eliminar la imagen: $e',
+      };
+    }
+  }
 }
