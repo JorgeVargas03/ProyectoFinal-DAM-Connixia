@@ -58,6 +58,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
       if (pickedFile == null) return;
 
+      // Mostrar previsualización antes de subir
+      final confirmed = await _showPreviewDialog(File(pickedFile.path));
+      if (!confirmed) return;
+
       setState(() => _isUpdatingImage = true);
 
       if (_user == null) {
@@ -89,39 +93,197 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Future<bool> _showPreviewDialog(File imageFile) async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: EdgeInsets.zero,
+        child: Stack(
+          children: [
+            Center(
+              child: InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 3.0,
+                child: Image.file(
+                  imageFile,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+            SafeArea(
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withOpacity(0.7),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.white),
+                          onPressed: () => Navigator.of(context).pop(false),
+                        ),
+                        const Expanded(
+                          child: Text(
+                            'Previsualizar foto',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        const SizedBox(width: 48),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withOpacity(0.7),
+                        ],
+                      ),
+                    ),
+                    child: ElevatedButton.icon(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      icon: const Icon(Icons.check),
+                      label: const Text('Usar esta foto'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    return result == true;
+  }
+
   void _showImageSourceDialog() {
     showModalBottomSheet(
       context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt),
-              title: const Text('Tomar foto'),
-              onTap: () {
-                Navigator.pop(context);
-                _pickAndUploadImage(ImageSource.camera);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text('Elegir de galería'),
-              onTap: () {
-                Navigator.pop(context);
-                _pickAndUploadImage(ImageSource.gallery);
-              },
-            ),
-            if (_user?.photoURL != null && _user!.photoURL!.isNotEmpty)
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              if (_user?.photoURL != null && _user!.photoURL!.isNotEmpty)
+                ListTile(
+                  leading: const Icon(Icons.zoom_in, color: Colors.blue),
+                  title: const Text('Ver foto actual'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showEnlargedImageDialog();
+                  },
+                ),
               ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('Eliminar foto', style: TextStyle(color: Colors.red)),
+                leading: const Icon(Icons.camera_alt, color: Colors.blue),
+                title: const Text('Tomar foto'),
                 onTap: () {
                   Navigator.pop(context);
-                  _removeProfileImage();
+                  _pickAndUploadImage(ImageSource.camera);
                 },
               ),
-          ],
+              ListTile(
+                leading: const Icon(Icons.photo_library, color: Colors.blue),
+                title: const Text('Elegir de galería'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickAndUploadImage(ImageSource.gallery);
+                },
+              ),
+              if (_user?.photoURL != null && _user!.photoURL!.isNotEmpty) ...[
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.delete, color: Colors.red),
+                  title: const Text('Eliminar foto', style: TextStyle(color: Colors.red)),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final confirmed = await _confirmDeleteDialog();
+                    if (confirmed) {
+                      _removeProfileImage();
+                    }
+                  },
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<bool> _confirmDeleteDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Eliminar foto de perfil'),
+        content: const Text('¿Estás seguro? Podrás subir una nueva foto en cualquier momento.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    return result == true;
+  }
+
+  Future<void> _showEnlargedImageDialog() async {
+    if (_user == null || _user!.photoURL == null || _user!.photoURL!.isEmpty) return;
+
+    await Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        barrierColor: Colors.black,
+        pageBuilder: (context, _, __) => _FullScreenImageViewer(
+          imageUrl: _user!.photoURL!,
+          heroTag: 'profile_image_${_user!.uid}',
         ),
       ),
     );
@@ -135,13 +297,12 @@ class _ProfilePageState extends State<ProfilePage> {
     setState(() => _isUpdatingImage = true);
 
     try {
-
       final result = await ImageUploadService.deleteProfileImage(filename);
       if (result['success']) {
         await _user!.updatePhotoURL(null);
         await FirebaseAuth.instance.currentUser?.reload();
 
-        _loadUser(); // Recarga los datos del usuario para actualizar la UI.
+        _loadUser();
 
         _showSnackBar('Foto de perfil eliminada correctamente');
       } else {
@@ -153,7 +314,6 @@ class _ProfilePageState extends State<ProfilePage> {
       setState(() => _isUpdatingImage = false);
     }
   }
-
 
   Future<void> _saveProfile() async {
     final newName = _displayNameCtrl.text.trim();
@@ -181,6 +341,8 @@ class _ProfilePageState extends State<ProfilePage> {
       SnackBar(
         content: Text(message),
         backgroundColor: isError ? Colors.red : Colors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -199,15 +361,21 @@ class _ProfilePageState extends State<ProfilePage> {
             const SizedBox(height: 20),
             Stack(
               children: [
-                CircleAvatar(
-                  radius: 60,
-                  backgroundColor: Colors.grey[300],
-                  backgroundImage: hasPhoto ? NetworkImage(u.photoURL!) : null,
-                  child: hasPhoto
-                      ? null
-                      : Text(
-                    _userInitial(u),
-                    style: const TextStyle(fontSize: 48),
+                GestureDetector(
+                  onTap: hasPhoto && !_isUpdatingImage ? _showEnlargedImageDialog : null,
+                  child: Hero(
+                    tag: u != null ? 'profile_image_${u.uid}' : 'profile_image_unknown',
+                    child: CircleAvatar(
+                      radius: 60,
+                      backgroundColor: Colors.grey[300],
+                      backgroundImage: hasPhoto ? NetworkImage(u!.photoURL!) : null,
+                      child: hasPhoto
+                          ? null
+                          : Text(
+                        _userInitial(u),
+                        style: const TextStyle(fontSize: 48),
+                      ),
+                    ),
                   ),
                 ),
                 if (_isUpdatingImage)
@@ -290,6 +458,95 @@ class _ProfilePageState extends State<ProfilePage> {
                 onPressed: _authController.signOut,
                 icon: const Icon(Icons.logout),
                 label: const Text('Cerrar sesión'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FullScreenImageViewer extends StatefulWidget {
+  final String imageUrl;
+  final String heroTag;
+
+  const _FullScreenImageViewer({
+    required this.imageUrl,
+    required this.heroTag,
+  });
+
+  @override
+  State<_FullScreenImageViewer> createState() => _FullScreenImageViewerState();
+}
+
+class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
+  final TransformationController _transformationController = TransformationController();
+  TapDownDetails? _doubleTapDetails;
+
+  @override
+  void dispose() {
+    _transformationController.dispose();
+    super.dispose();
+  }
+
+  void _handleDoubleTapDown(TapDownDetails details) {
+    _doubleTapDetails = details;
+  }
+
+  void _handleDoubleTap() {
+    if (_transformationController.value != Matrix4.identity()) {
+      _transformationController.value = Matrix4.identity();
+    } else {
+      final position = _doubleTapDetails!.localPosition;
+      _transformationController.value = Matrix4.identity()
+        ..translate(-position.dx * 2, -position.dy * 2)
+        ..scale(3.0);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: GestureDetector(
+        onDoubleTapDown: _handleDoubleTapDown,
+        onDoubleTap: _handleDoubleTap,
+        child: Stack(
+          children: [
+            Center(
+              child: Hero(
+                tag: widget.heroTag,
+                child: InteractiveViewer(
+                  transformationController: _transformationController,
+                  minScale: 0.5,
+                  maxScale: 4.0,
+                  child: Image.network(
+                    widget.imageUrl,
+                    fit: BoxFit.contain,
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return const Center(
+                        child: CircularProgressIndicator(color: Colors.white),
+                      );
+                    },
+                    errorBuilder: (context, error, stack) => const Center(
+                      child: Icon(Icons.broken_image, color: Colors.white, size: 64),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Align(
+                  alignment: Alignment.topLeft,
+                  child: IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ),
               ),
             ),
           ],
