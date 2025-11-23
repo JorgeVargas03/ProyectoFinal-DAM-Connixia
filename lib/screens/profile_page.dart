@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:characters/characters.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'dart:io';
 import '../controllers/auth_controller.dart';
 import '../services/image_upload_service.dart';
@@ -47,19 +48,59 @@ class _ProfilePageState extends State<ProfilePage> {
     return src.characters.first.toUpperCase();
   }
 
+  Future<File?> _cropImage(File imageFile) async {
+    try {
+      CroppedFile? croppedFile = await ImageCropper().cropImage(
+        sourcePath: imageFile.path,
+        compressQuality: 80, // Balance óptimo calidad/peso
+        compressFormat: ImageCompressFormat.jpg, // JPEG comprime mejor que PNG
+        maxWidth: 1080, // Limita dimensiones sin perder calidad visible
+        maxHeight: 1080,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Recortar foto',
+            toolbarColor: Theme.of(context).primaryColor,
+            toolbarWidgetColor: Colors.white,
+            lockAspectRatio: true,
+            aspectRatioPresets: [CropAspectRatioPreset.square],
+          ),
+          IOSUiSettings(
+            title: 'Recortar foto',
+            aspectRatioLockEnabled: true,
+            resetAspectRatioEnabled: false,
+            aspectRatioPickerButtonHidden: true,
+          ),
+        ],
+        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+      );
+
+      if (croppedFile != null) {
+        return File(croppedFile.path);
+      }
+      return null;
+    } catch (e) {
+      _showSnackBar('Error al recortar imagen: $e', isError: true);
+      return null;
+    }
+  }
+
+
+
   Future<void> _pickAndUploadImage(ImageSource source) async {
     try {
       final XFile? pickedFile = await _picker.pickImage(
         source: source,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
+        maxWidth: 1920, // Evita imágenes enormes desde origen
+        maxHeight: 1920,
+        imageQuality: 85, // Compresión inicial razonable
       );
 
       if (pickedFile == null) return;
 
-      // Mostrar previsualización antes de subir
-      final confirmed = await _showPreviewDialog(File(pickedFile.path));
+      File? croppedImage = await _cropImage(File(pickedFile.path));
+      if (croppedImage == null) return;
+
+      final confirmed = await _showPreviewDialog(croppedImage);
       if (!confirmed) return;
 
       setState(() => _isUpdatingImage = true);
@@ -72,7 +113,7 @@ class _ProfilePageState extends State<ProfilePage> {
       final filename = 'profile_${_user!.uid}';
 
       final result = await ImageUploadService.uploadProfileImage(
-        File(pickedFile.path),
+        croppedImage,
         filename,
       );
 
@@ -92,6 +133,7 @@ class _ProfilePageState extends State<ProfilePage> {
       setState(() => _isUpdatingImage = false);
     }
   }
+
 
   Future<bool> _showPreviewDialog(File imageFile) async {
     final result = await showDialog<bool>(
@@ -372,9 +414,9 @@ class _ProfilePageState extends State<ProfilePage> {
                       child: hasPhoto
                           ? null
                           : Text(
-                        _userInitial(u),
-                        style: const TextStyle(fontSize: 48),
-                      ),
+                              _userInitial(u),
+                              style: const TextStyle(fontSize: 48),
+                            ),
                     ),
                   ),
                 ),
@@ -439,13 +481,13 @@ class _ProfilePageState extends State<ProfilePage> {
                 onPressed: _isSaving ? null : _saveProfile,
                 icon: _isSaving
                     ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
                     : const Icon(Icons.save),
                 label: Text(_isSaving ? 'Guardando...' : 'Guardar cambios'),
               ),
