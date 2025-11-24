@@ -9,6 +9,7 @@ import '../controllers/location_controller.dart';
 import '../controllers/notification_controller.dart';
 import 'profile_page.dart';
 import 'package:characters/characters.dart';
+import 'events_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -180,11 +181,10 @@ class _HomePageState extends State<HomePage> {
             ListTile(
               leading: const Icon(Icons.event),
               title: const Text('Mis eventos'),
-              subtitle: const Text('Próximamente'),
               onTap: () {
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Función en desarrollo')),
+                Navigator.of(context).pop(); // 1. Cierra el Drawer
+                Navigator.of(context).push(  // 2. Navega a la página de eventos
+                  MaterialPageRoute(builder: (_) => const EventsPage()),
                 );
               },
             ),
@@ -321,10 +321,11 @@ class _HomePageState extends State<HomePage> {
                 child: ListTile(
                   leading: const Icon(Icons.event),
                   title: const Text('Eventos'),
-                  subtitle: const Text('Módulo próximamente'),
+                  subtitle: const Text('Administra tus puntos de encuentro'),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Eventos aún no disponibles')),
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const EventsPage()),
                     );
                   },
                 ),
