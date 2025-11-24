@@ -16,6 +16,12 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
+        <activity
+            android:name="com.yalantis.ucrop.UCropActivity"
+            android:exported="false"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+            android:screenOrientation="portrait" />
+        
         <!-- API Key de Google Maps -->
         <meta-data
         android:name="com.google.android.geo.API_KEY"
