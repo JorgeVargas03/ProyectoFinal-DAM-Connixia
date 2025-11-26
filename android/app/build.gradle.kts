@@ -45,7 +45,7 @@ android {
         }
 
 
-        val mapsApiKey = localProperties.getProperty("MAPS_API_KEY") ?: "AIzaSyCLdMnVyUT6a3O6NWXK9k6UCf-_uzz69lU"
+        val mapsApiKey = localProperties.getProperty("MAPS_API_KEY") ?: ""
 
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
 
