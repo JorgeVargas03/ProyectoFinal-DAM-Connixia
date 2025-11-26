@@ -191,6 +191,7 @@ class _ProfilePageState extends State<ProfilePage>
         _showSnackBar('Foto actualizada correctamente');
       } else {
         _showSnackBar(result['message'] ?? 'Error desconocido', isError: true);
+        _showSnackBar(result['message'] ?? 'Error desconocido', isError: true);
       }
     } catch (e) {
       _showSnackBar('Error: $e', isError: true);
