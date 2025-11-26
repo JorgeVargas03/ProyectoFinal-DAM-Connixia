@@ -16,7 +16,8 @@ class ProfilePage extends StatefulWidget {
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStateMixin {
+class _ProfilePageState extends State<ProfilePage>
+    with SingleTickerProviderStateMixin {
   final _authController = AuthController();
   final _displayNameCtrl = TextEditingController();
   final _currentPassCtrl = TextEditingController();
@@ -83,7 +84,10 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     }
 
     if (newPass.length < 6) {
-      _showSnackBar('Nueva contraseña debe tener mínimo 6 caracteres', isError: true);
+      _showSnackBar(
+        'Nueva contraseña debe tener mínimo 6 caracteres',
+        isError: true,
+      );
       return;
     }
 
@@ -122,10 +126,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
             toolbarWidgetColor: Colors.white,
             lockAspectRatio: true,
           ),
-          IOSUiSettings(
-            title: 'Recortar imagen',
-            aspectRatioLockEnabled: true,
-          ),
+          IOSUiSettings(title: 'Recortar imagen', aspectRatioLockEnabled: true),
         ],
       );
       return croppedFile != null ? File(croppedFile.path) : null;
@@ -137,7 +138,10 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
 
   Future<void> _pickAndUploadImage(ImageSource source) async {
     try {
-      final pickedFile = await _picker.pickImage(source: source, imageQuality: 80);
+      final pickedFile = await _picker.pickImage(
+        source: source,
+        imageQuality: 80,
+      );
       if (pickedFile == null) return;
 
       final imageFile = File(pickedFile.path);
@@ -150,7 +154,10 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
       setState(() => _isUpdatingImage = true);
 
       final filename = 'profile_${_user!.uid}';
-      final result = await ImageUploadService.uploadProfileImage(croppedImage, filename);
+      final result = await ImageUploadService.uploadProfileImage(
+        croppedImage,
+        filename,
+      );
 
       if (result['success']) {
         await _user!.updatePhotoURL(result['url']);
@@ -195,7 +202,10 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                   icon: const Icon(Icons.check),
                   label: const Text('Confirmar'),
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 16,
+                    ),
                   ),
                 ),
               ),
@@ -217,6 +227,15 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (_user?.photoURL != null && _user!.photoURL!.isNotEmpty)
+              ListTile(
+                leading: const Icon(Icons.visibility),
+                title: const Text('Ver foto actual'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showFullImage();
+                },
+              ),
             ListTile(
               leading: const Icon(Icons.camera_alt),
               title: const Text('Tomar foto'),
@@ -236,7 +255,10 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
             if (_user?.photoURL != null && _user!.photoURL!.isNotEmpty)
               ListTile(
                 leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('Eliminar foto', style: TextStyle(color: Colors.red)),
+                title: const Text(
+                  'Eliminar foto',
+                  style: TextStyle(color: Colors.red),
+                ),
                 onTap: () async {
                   Navigator.pop(context);
                   final confirmed = await _confirmDeleteDialog();
@@ -244,6 +266,45 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                 },
               ),
             const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showFullImage() {
+    if (_user?.photoURL == null || _user!.photoURL!.isEmpty) return;
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Align(
+              alignment: Alignment.topRight,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 32),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+            Expanded(
+              child: InteractiveViewer(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.network(
+                    _user!.photoURL!,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) =>
+                        const Icon(Icons.error, color: Colors.white, size: 64),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
           ],
         ),
       ),
@@ -390,16 +451,18 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                   child: CircleAvatar(
                     radius: 60,
                     backgroundColor: theme.colorScheme.surface,
-                    backgroundImage: hasPhoto ? NetworkImage(_user!.photoURL!) : null,
+                    backgroundImage: hasPhoto
+                        ? NetworkImage(_user!.photoURL!)
+                        : null,
                     child: !hasPhoto
                         ? Text(
-                      _userInitial(),
-                      style: TextStyle(
-                        fontSize: 48,
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.primary,
-                      ),
-                    )
+                            _userInitial(),
+                            style: TextStyle(
+                              fontSize: 48,
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.primary,
+                            ),
+                          )
                         : null,
                   ),
                 ),
@@ -423,7 +486,11 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                     backgroundColor: theme.colorScheme.primary,
                     child: IconButton(
                       padding: EdgeInsets.zero,
-                      icon: const Icon(Icons.edit, size: 18, color: Colors.white),
+                      icon: const Icon(
+                        Icons.edit,
+                        size: 18,
+                        color: Colors.white,
+                      ),
                       onPressed: _showImageSourceDialog,
                     ),
                   ),
@@ -463,7 +530,12 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     );
   }
 
-  Widget _buildStatItem(IconData icon, String label, String value, ThemeData theme) {
+  Widget _buildStatItem(
+    IconData icon,
+    String label,
+    String value,
+    ThemeData theme,
+  ) {
     return Column(
       children: [
         Icon(icon, color: theme.colorScheme.primary, size: 28),
@@ -502,7 +574,9 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                   const SizedBox(width: 8),
                   Text(
                     'Información personal',
-                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
@@ -512,9 +586,13 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                 decoration: InputDecoration(
                   labelText: 'Nombre visible',
                   prefixIcon: const Icon(Icons.badge),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Ingresa un nombre' : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Ingresa un nombre'
+                    : null,
               ),
               const SizedBox(height: 16),
               SizedBox(
@@ -523,15 +601,20 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                   onPressed: _isSaving ? null : _saveProfile,
                   icon: _isSaving
                       ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                  )
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
                       : const Icon(Icons.save),
                   label: const Text('Guardar cambios'),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
@@ -550,7 +633,9 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           if (_hasPasswordProvider()) ...[
             Card(
               elevation: 2,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -558,11 +643,16 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.lock_reset, color: theme.colorScheme.primary),
+                        Icon(
+                          Icons.lock_reset,
+                          color: theme.colorScheme.primary,
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           'Cambiar contraseña',
-                          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ],
                     ),
@@ -573,7 +663,9 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                       decoration: InputDecoration(
                         labelText: 'Contraseña actual',
                         prefixIcon: const Icon(Icons.lock_outline),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -583,7 +675,9 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                       decoration: InputDecoration(
                         labelText: 'Nueva contraseña',
                         prefixIcon: const Icon(Icons.lock),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -593,15 +687,20 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                         onPressed: _isChangingPassword ? null : _changePassword,
                         icon: _isChangingPassword
                             ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
                             : const Icon(Icons.check),
                         label: const Text('Actualizar contraseña'),
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                     ),
@@ -614,7 +713,9 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           Card(
             color: theme.colorScheme.errorContainer,
             elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -636,21 +737,30 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                   const SizedBox(height: 12),
                   Text(
                     'Esta acción es permanente y no se puede deshacer.',
-                    style: TextStyle(color: theme.colorScheme.onErrorContainer.withOpacity(0.8)),
+                    style: TextStyle(
+                      color: theme.colorScheme.onErrorContainer.withOpacity(
+                        0.8,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
                       onPressed: _confirmDeleteAccount,
-                      icon: Icon(Icons.delete_forever, color: theme.colorScheme.error),
+                      icon: Icon(
+                        Icons.delete_forever,
+                        color: theme.colorScheme.error,
+                      ),
                       label: Text(
                         'Eliminar cuenta',
                         style: TextStyle(color: theme.colorScheme.error),
                       ),
                       style: OutlinedButton.styleFrom(
                         side: BorderSide(color: theme.colorScheme.error),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
@@ -711,7 +821,9 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                     const SizedBox(width: 8),
                     Text(
                       'Personalización',
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ),
@@ -721,10 +833,14 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                   subtitle: const Text('Activa el tema oscuro en toda la app'),
                   value: themeProvider.themeMode == ThemeMode.dark,
                   onChanged: (value) {
-                    themeProvider.setTheme(value ? ThemeMode.dark : ThemeMode.light);
+                    themeProvider.setTheme(
+                      value ? ThemeMode.dark : ThemeMode.light,
+                    );
                   },
                   secondary: Icon(
-                    themeProvider.themeMode == ThemeMode.dark ? Icons.dark_mode : Icons.light_mode,
+                    themeProvider.themeMode == ThemeMode.dark
+                        ? Icons.dark_mode
+                        : Icons.light_mode,
                     color: theme.colorScheme.primary,
                   ),
                 ),
@@ -745,7 +861,9 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         label: const Text('Cerrar sesión', style: TextStyle(color: Colors.red)),
         style: OutlinedButton.styleFrom(
           side: const BorderSide(color: Colors.red),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           padding: const EdgeInsets.symmetric(vertical: 12),
         ),
       ),
