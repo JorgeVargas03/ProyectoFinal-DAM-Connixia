@@ -153,12 +153,12 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
       final result = await ImageUploadService.uploadProfileImage(croppedImage, filename);
 
       if (result['success']) {
-        await _user!.updatePhotoURL(result['url']);
+        await _user!.updatePhotoURL(result['profileImageUrl']);
         await FirebaseAuth.instance.currentUser?.reload();
         _loadUser();
         _showSnackBar('Foto actualizada correctamente');
       } else {
-        _showSnackBar(result['error'] ?? 'Error desconocido', isError: true);
+        _showSnackBar(result['message'] ?? 'Error desconocido', isError: true);
       }
     } catch (e) {
       _showSnackBar('Error: $e', isError: true);
@@ -283,7 +283,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         _loadUser();
         _showSnackBar('Foto eliminada');
       } else {
-        _showSnackBar(result['error'] ?? 'Error desconocido', isError: true);
+        _showSnackBar(result['message'] ?? 'Error desconocido', isError: true);
       }
     } finally {
       setState(() => _isUpdatingImage = false);
