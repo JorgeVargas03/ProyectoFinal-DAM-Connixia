@@ -60,6 +60,22 @@ class _ProfilePageState extends State<ProfilePage>
     return _user?.providerData.any((p) => p.providerId == 'password') ?? false;
   }
 
+  String _getAuthProvider() {
+    if (_user?.providerData.isEmpty ?? true) return 'Desconocido';
+    final provider = _user!.providerData.first.providerId;
+    if (provider == 'password') return 'Correo';
+    if (provider == 'google.com') return 'Google';
+    return provider;
+  }
+
+  IconData _getAuthProviderIcon() {
+    if (_user?.providerData.isEmpty ?? true) return Icons.help_outline;
+    final provider = _user!.providerData.first.providerId;
+    if (provider == 'password') return Icons.email;
+    if (provider == 'google.com') return Icons.g_mobiledata;
+    return Icons.account_circle;
+  }
+
   String _userInitial() {
     final name = (_user?.displayName ?? '').trim();
     final email = (_user?.email ?? '').trim();
@@ -162,19 +178,19 @@ class _ProfilePageState extends State<ProfilePage>
 
       if (result['success']) {
         // 1. Actualizar Auth
-        await _user!.updatePhotoURL(result['url']);
+        await _user!.updatePhotoURL(result['profileImageUrl']);
 
         // 2. <--- ACTUALIZACIÓN FIRESTORE: Guardamos la URL en la BD también
         await FirebaseFirestore.instance
             .collection('users')
             .doc(_user!.uid)
-            .update({'photoURL': result['url']});
+            .update({'photoURL': result['profileImageUrl']});
 
         await FirebaseAuth.instance.currentUser?.reload();
         _loadUser();
         _showSnackBar('Foto actualizada correctamente');
       } else {
-        _showSnackBar(result['error'] ?? 'Error desconocido', isError: true);
+        _showSnackBar(result['message'] ?? 'Error desconocido', isError: true);
       }
     } catch (e) {
       _showSnackBar('Error: $e', isError: true);
@@ -361,7 +377,7 @@ class _ProfilePageState extends State<ProfilePage>
         _loadUser();
         _showSnackBar('Foto eliminada');
       } else {
-        _showSnackBar(result['error'] ?? 'Error desconocido', isError: true);
+        _showSnackBar(result['message'] ?? 'Error desconocido', isError: true);
       }
     } finally {
       setState(() => _isUpdatingImage = false);
@@ -535,6 +551,36 @@ class _ProfilePageState extends State<ProfilePage>
               _user?.email ?? '',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSecondaryContainer.withOpacity(0.8),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: theme.colorScheme.primary.withOpacity(0.3),
+                  width: 1.5,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _getAuthProviderIcon(),
+                    size: 18,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Cuenta de ${_getAuthProvider()}',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 16),
