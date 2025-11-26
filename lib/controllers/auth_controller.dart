@@ -1,20 +1,58 @@
-// auth_controller.dart
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Importante para la base de datos
 import 'package:flutter/foundation.dart';
 
 class AuthController {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  // --- MÉTODO PRIVADO: CREAR DOCUMENTO DE USUARIO (SI NO EXISTE) ---
+  // Este método actúa como un "seguro": verifica si el usuario tiene datos en la BD.
+  // Si no tiene (porque es nuevo o es un usuario viejo), crea el documento inicial.
+  Future<void> _createUserDocument(User user) async {
+    try {
+      final userRef = _firestore.collection('users').doc(user.uid);
+      final docSnapshot = await userRef.get();
+
+      if (!docSnapshot.exists) {
+        await userRef.set({
+          'uid': user.uid,
+          'email': user.email,
+          'displayName': user.displayName ?? '',
+          'photoURL': user.photoURL ?? '',
+          'createdAt': FieldValue.serverTimestamp(),
+          'contacts': [], // Array vacío para agregar amigos después
+          'fcmToken': '', // Listo para notificaciones
+        });
+      }
+    } catch (e) {
+      debugPrint('Error al crear/verificar perfil en Firestore: $e');
+    }
+  }
+
+  // --- INICIAR SESIÓN CON EMAIL ---
   Future<String?> signInWithEmail({
     required String email,
     required String password,
   }) async {
     try {
-      await _auth.signInWithEmailAndPassword(email: email, password: password);
-      return null;
+      // 1. Autenticación pura de Firebase
+      final UserCredential cred = await _auth.signInWithEmailAndPassword(
+          email: email,
+          password: password
+      );
+
+      // 2. VERIFICACIÓN DE REPARACIÓN:
+      // Si el login es exitoso, llamamos a _createUserDocument.
+      // Si el usuario ya tiene datos, no pasa nada.
+      // Si el usuario era viejo y no tenía datos, se crean aquí.
+      if (cred.user != null) {
+        await _createUserDocument(cred.user!);
+      }
+
+      return null; // null significa éxito
     } on FirebaseAuthException catch (e) {
       debugPrint('FirebaseAuthException: ${e.code} - ${e.message}');
       switch (e.code) {
@@ -35,6 +73,7 @@ class AuthController {
     }
   }
 
+  // --- REGISTRO CON EMAIL ---
   Future<String?> registerWithEmail({
     required String email,
     required String password,
@@ -51,6 +90,12 @@ class AuthController {
         email: emailTrim,
         password: password,
       );
+
+      // Creamos el documento inmediatamente para el usuario nuevo
+      if (cred.user != null) {
+        await _createUserDocument(cred.user!);
+      }
+
       await cred.user?.sendEmailVerification();
       return null;
     } on FirebaseAuthException catch (e) {
@@ -73,38 +118,37 @@ class AuthController {
     }
   }
 
+  // --- INICIAR SESIÓN CON GOOGLE ---
   Future<String?> signInWithGoogle() async {
     try {
-      // Inicializa GoogleSignIn con tu serverClientId
       await _googleSignIn.initialize(
         serverClientId: '736317810114-v6bmruruuluns7o1lmn76l3d3pva98i5.apps.googleusercontent.com',
       );
 
-      // Autentica (versión 7 usa authenticate en lugar de signIn)
       final GoogleSignInAccount? googleUser = await _googleSignIn.authenticate();
       if (googleUser == null) {
         return 'Inicio de sesión cancelado';
       }
 
-      // Obtiene el idToken
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
       final String? idToken = googleAuth.idToken;
       if (idToken == null) {
         return 'Error: No se pudo obtener el ID Token de Google';
       }
 
-      // Crea la credencial de Firebase solo con el idToken
       final AuthCredential credential = GoogleAuthProvider.credential(
         idToken: idToken,
       );
 
-      // Inicia sesión en Firebase
       final UserCredential userCredential = await _auth.signInWithCredential(credential);
       if (userCredential.user == null) {
         return 'Error: No se pudo completar el inicio de sesión';
       }
 
-      return null; // Éxito
+      // Aseguramos que el documento exista en Firestore
+      await _createUserDocument(userCredential.user!);
+
+      return null;
     } on FirebaseAuthException catch (e) {
       debugPrint('FirebaseAuthException en Google Sign-In: ${e.code} - ${e.message}');
       return e.message ?? 'Error de autenticación con Google';
@@ -114,7 +158,7 @@ class AuthController {
     }
   }
 
-
+  // --- CERRAR SESIÓN ---
   Future<void> signOut() async {
     try {
       await _googleSignIn.signOut();
@@ -124,6 +168,7 @@ class AuthController {
     }
   }
 
+  // --- RECUPERAR CONTRASEÑA ---
   Future<String?> sendPasswordReset(String email) async {
     try {
       await _auth.sendPasswordResetEmail(email: email);
@@ -133,26 +178,28 @@ class AuthController {
     }
   }
 
+  // --- ELIMINAR CUENTA ---
   Future<String?> deleteAccount() async {
     final user = _auth.currentUser;
 
     if (user == null) return 'No hay usuario autenticado.';
 
     try {
+      // Opcional: Descomenta esto si quieres que al borrar la cuenta
+      // también se borre su perfil de la base de datos.
+      // await _firestore.collection('users').doc(user.uid).delete();
+
       await user.delete();
       return null;
     } on FirebaseAuthException catch (e) {
-      // Necesita verificarse recientemente
       if (e.code == 'requires-recent-login') {
         try {
           if (user.providerData.any((p) => p.providerId == 'google.com')) {
-            // Verificarse con Google
             await signInWithGoogle();
           } else {
             return 'Debes volver a iniciar sesión para eliminar tu cuenta.';
           }
-
-          // Intentar eliminar otra vez
+          // Reintentar eliminación tras re-autenticación
           await user.delete();
           return null;
         } catch (e) {
@@ -162,5 +209,4 @@ class AuthController {
       return e.message ?? 'Error al eliminar la cuenta.';
     }
   }
-
 }

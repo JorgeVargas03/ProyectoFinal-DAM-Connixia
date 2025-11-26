@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // <--- 1. IMPORTANTE: Agregar este import
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
@@ -160,7 +161,15 @@ class _ProfilePageState extends State<ProfilePage>
       );
 
       if (result['success']) {
+        // 1. Actualizar Auth
         await _user!.updatePhotoURL(result['url']);
+
+        // 2. <--- ACTUALIZACIÓN FIRESTORE: Guardamos la URL en la BD también
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(_user!.uid)
+            .update({'photoURL': result['url']});
+
         await FirebaseAuth.instance.currentUser?.reload();
         _loadUser();
         _showSnackBar('Foto actualizada correctamente');
@@ -339,7 +348,15 @@ class _ProfilePageState extends State<ProfilePage>
       final filename = 'profile_${_user!.uid}';
       final result = await ImageUploadService.deleteProfileImage(filename);
       if (result['success']) {
+        // 1. Actualizar Auth
         await _user!.updatePhotoURL(null);
+
+        // 2. <--- ACTUALIZACIÓN FIRESTORE: Ponemos null en la BD
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(_user!.uid)
+            .update({'photoURL': null});
+
         await FirebaseAuth.instance.currentUser?.reload();
         _loadUser();
         _showSnackBar('Foto eliminada');
@@ -358,7 +375,15 @@ class _ProfilePageState extends State<ProfilePage>
 
     setState(() => _isSaving = true);
     try {
+      // 1. Actualizar Auth
       await _user!.updateDisplayName(newName);
+
+      // 2. <--- ACTUALIZACIÓN FIRESTORE: Actualizamos el nombre visible
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(_user!.uid)
+          .update({'displayName': newName});
+
       await FirebaseAuth.instance.currentUser?.reload();
       _loadUser();
       _showSnackBar('Perfil actualizado');
