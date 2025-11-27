@@ -158,7 +158,7 @@ class _HomePageState extends State<HomePage> {
                     borderRadius: BorderRadius.circular(40),
                     child: CircleAvatar(
                       backgroundColor: Colors.white,
-                      backgroundImage: hasPhoto ? NetworkImage(u!.photoURL!) : null,
+                      backgroundImage: hasPhoto ? NetworkImage(u.photoURL!) : null,
                       child: hasPhoto
                           ? null
                           : Text(
@@ -532,15 +532,15 @@ class _HomePageState extends State<HomePage> {
               infoWindow: InfoWindow(
                 title: title,
                 snippet: '${participants.length} asistentes • ${distance.toStringAsFixed(1)} km',
-                onTap: () {
-                  // Navegar al detalle del evento
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => EventDetailPage(eventId: doc.id),
-                    ),
-                  );
-                },
               ),
+              onTap: () {
+                // Navegar al detalle del evento cuando se toca el marcador
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => EventDetailPage(eventId: doc.id),
+                  ),
+                );
+              },
             ),
           );
         }
