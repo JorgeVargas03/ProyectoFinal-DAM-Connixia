@@ -33,7 +33,6 @@ class _HomePageState extends State<HomePage> {
   ShakeDetector? _shake;
   bool _postingArrival = false;
   bool _showMap = false;
-  Set<Marker> _eventMarkers = {};
 
   @override
   void initState() {
@@ -468,9 +467,10 @@ class _HomePageState extends State<HomePage> {
     return StreamBuilder<QuerySnapshot>(
       stream: _eventCtrl.getAllPublicEvents(),
       builder: (context, snapshot) {
-        // Actualizar marcadores de eventos
+        // Actualizar marcadores de eventos sin setState durante build
+        Set<Marker> eventMarkers = {};
         if (snapshot.hasData) {
-          _updateEventMarkers(snapshot.data!.docs);
+          eventMarkers = _buildEventMarkers(snapshot.data!.docs);
         }
 
         return GoogleMap(
@@ -487,7 +487,7 @@ class _HomePageState extends State<HomePage> {
               infoWindow: const InfoWindow(title: 'Tu ubicación'),
             ),
             // Eventos cercanos
-            ..._eventMarkers,
+            ...eventMarkers,
           },
           onTap: (position) {
             // Opcional: crear evento rápido en la posición tocada
@@ -497,7 +497,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _updateEventMarkers(List<DocumentSnapshot> events) {
+  Set<Marker> _buildEventMarkers(List<DocumentSnapshot> events) {
     final markers = <Marker>{};
     final myUid = FirebaseAuth.instance.currentUser?.uid;
 
@@ -547,11 +547,7 @@ class _HomePageState extends State<HomePage> {
       }
     }
 
-    if (mounted) {
-      setState(() {
-        _eventMarkers = markers;
-      });
-    }
+    return markers;
   }
 
   String _userInitial() {
