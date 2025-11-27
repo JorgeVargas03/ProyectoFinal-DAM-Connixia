@@ -7,8 +7,13 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/location_controller.dart';
 import '../controllers/notification_controller.dart';
+import '../controllers/event_controller.dart';
+import '../services/notification_service.dart';
 import 'profile_page.dart';
 import 'events_page.dart';
+import 'explore_events_page.dart';
+import 'event_detail_page.dart';
+import 'notifications_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -20,12 +25,15 @@ class _HomePageState extends State<HomePage> {
   final _auth = AuthController();
   final _location = LocationController();
   final _notifications = NotificationController();
+  final _eventCtrl = EventController();
+  final _notificationService = NotificationService();
 
   GoogleMapController? _mapCtrl;
   LatLng? _myPos;
   ShakeDetector? _shake;
   bool _postingArrival = false;
   bool _showMap = false;
+  Set<Marker> _eventMarkers = {};
 
   @override
   void initState() {
@@ -188,13 +196,45 @@ class _HomePageState extends State<HomePage> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.notifications),
-              title: const Text('Notificaciones'),
-              subtitle: const Text('Próximamente'),
+              leading: const Icon(Icons.explore),
+              title: const Text('Explorar eventos'),
+              subtitle: const Text('Descubre eventos cerca de ti'),
               onTap: () {
                 Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Función en desarrollo')),
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ExploreEventsPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.notifications),
+              title: const Text('Notificaciones'),
+              trailing: StreamBuilder<int>(
+                stream: _notificationService.getUnreadCount(),
+                builder: (context, snapshot) {
+                  final count = snapshot.data ?? 0;
+                  if (count == 0) return const SizedBox.shrink();
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      count > 9 ? '9+' : '$count',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              onTap: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const NotificationsPage()),
                 );
               },
             ),
@@ -245,6 +285,54 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           actions: [
+            // Notificaciones con badge
+            StreamBuilder<int>(
+              stream: _notificationService.getUnreadCount(),
+              builder: (context, snapshot) {
+                final unreadCount = snapshot.data ?? 0;
+                return Stack(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.notifications),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const NotificationsPage(),
+                          ),
+                        );
+                      },
+                      tooltip: 'Notificaciones',
+                    ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            unreadCount > 9 ? '9+' : '$unreadCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
             IconButton(
               icon: Icon(_showMap ? Icons.dashboard : Icons.map),
               onPressed: _toggleMap,
@@ -289,6 +377,24 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ],
                   ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: ListTile(
+                  leading: const Icon(Icons.explore),
+                  title: const Text('Explorar eventos'),
+                  subtitle: const Text('Descubre eventos cerca de ti'),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const ExploreEventsPage()),
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 16),
@@ -358,15 +464,94 @@ class _HomePageState extends State<HomePage> {
     if (_myPos == null) {
       return const Center(child: CircularProgressIndicator());
     }
-    return GoogleMap(
-      myLocationEnabled: true,
-      myLocationButtonEnabled: true,
-      initialCameraPosition: CameraPosition(target: _myPos!, zoom: 15),
-      onMapCreated: (c) => _mapCtrl = c,
-      markers: {
-        Marker(markerId: const MarkerId('yo'), position: _myPos!),
+    
+    return StreamBuilder<QuerySnapshot>(
+      stream: _eventCtrl.getAllPublicEvents(),
+      builder: (context, snapshot) {
+        // Actualizar marcadores de eventos
+        if (snapshot.hasData) {
+          _updateEventMarkers(snapshot.data!.docs);
+        }
+
+        return GoogleMap(
+          myLocationEnabled: true,
+          myLocationButtonEnabled: true,
+          initialCameraPosition: CameraPosition(target: _myPos!, zoom: 13),
+          onMapCreated: (c) => _mapCtrl = c,
+          markers: {
+            // Mi ubicación
+            Marker(
+              markerId: const MarkerId('mi_ubicacion'),
+              position: _myPos!,
+              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+              infoWindow: const InfoWindow(title: 'Tu ubicación'),
+            ),
+            // Eventos cercanos
+            ..._eventMarkers,
+          },
+          onTap: (position) {
+            // Opcional: crear evento rápido en la posición tocada
+          },
+        );
       },
     );
+  }
+
+  void _updateEventMarkers(List<DocumentSnapshot> events) {
+    final markers = <Marker>{};
+    final myUid = FirebaseAuth.instance.currentUser?.uid;
+
+    for (var doc in events) {
+      final data = doc.data() as Map<String, dynamic>;
+      final lat = data['location']?['lat'] as double?;
+      final lng = data['location']?['lng'] as double?;
+      final title = data['title'] ?? 'Evento';
+      final creatorId = data['creatorId'];
+      final participants = List.from(data['participants'] ?? []);
+
+      if (lat != null && lng != null && _myPos != null) {
+        // Calcular distancia
+        final distance = _eventCtrl.calculateDistance(
+          _myPos!.latitude,
+          _myPos!.longitude,
+          lat,
+          lng,
+        );
+
+        // Solo mostrar eventos dentro de 50km
+        if (distance <= 50) {
+          final isMyEvent = creatorId == myUid;
+          
+          markers.add(
+            Marker(
+              markerId: MarkerId(doc.id),
+              position: LatLng(lat, lng),
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                isMyEvent ? BitmapDescriptor.hueGreen : BitmapDescriptor.hueRed,
+              ),
+              infoWindow: InfoWindow(
+                title: title,
+                snippet: '${participants.length} asistentes • ${distance.toStringAsFixed(1)} km',
+                onTap: () {
+                  // Navegar al detalle del evento
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => EventDetailPage(eventId: doc.id),
+                    ),
+                  );
+                },
+              ),
+            ),
+          );
+        }
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _eventMarkers = markers;
+      });
+    }
   }
 
   String _userInitial() {

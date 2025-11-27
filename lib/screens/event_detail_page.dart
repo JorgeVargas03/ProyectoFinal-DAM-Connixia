@@ -142,26 +142,96 @@ class _EventDetailPageState extends State<EventDetailPage> {
                         if (description.isNotEmpty) ...[
                           const Text('Acerca del evento:', style: TextStyle(fontWeight: FontWeight.bold)),
                           const SizedBox(height: 8),
-                          Text(description, style: TextStyle(color: Colors.grey[800])),
+                          Text(description),
                           const Divider(height: 40),
                         ],
 
-                        // --- SECCIÓN 5: PARTICIPANTES (Resumen) ---
+                        // --- SECCIÓN 5: PARTICIPANTES ---
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text('Asistentes (${participants.length})',
-                                style: const TextStyle(fontWeight: FontWeight.bold)),
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                             if (isCreator)
-                              const Chip(
-                                label: Text('Eres admin'),
-                                backgroundColor: Colors.green,
-                                labelStyle: TextStyle(color: Colors.white),
+                              Chip(
+                                label: const Text('Organizador'),
+                                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                                labelStyle: TextStyle(
+                                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                           ],
                         ),
-                        const SizedBox(height: 10),
-                        Text('Organizado por: $creatorName'),
+                        const SizedBox(height: 16),
+                        
+                        // Lista de participantes con fotos
+                        FutureBuilder<List<Map<String, dynamic>>>(
+                          future: _eventCtrl.getParticipantsInfo(participants.cast<String>()),
+                          builder: (context, participantsSnapshot) {
+                            if (participantsSnapshot.connectionState == ConnectionState.waiting) {
+                              return const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(20),
+                                  child: CircularProgressIndicator(),
+                                ),
+                              );
+                            }
+
+                            final participantsInfo = participantsSnapshot.data ?? [];
+
+                            if (participantsInfo.isEmpty) {
+                              return Text(
+                                'No se pudo cargar la información de los participantes',
+                                style: TextStyle(color: Colors.grey[600]),
+                              );
+                            }
+
+                            return Column(
+                              children: participantsInfo.map((participant) {
+                                final isOrganizer = participant['uid'] == creatorId;
+                                final displayName = participant['displayName'] ?? 'Usuario';
+                                final photoURL = participant['photoURL'];
+                                final initial = displayName.isNotEmpty 
+                                    ? displayName[0].toUpperCase() 
+                                    : 'U';
+
+                                return Card(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  elevation: 1,
+                                  child: ListTile(
+                                    leading: CircleAvatar(
+                                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                                      backgroundImage: photoURL != null && photoURL.isNotEmpty
+                                          ? NetworkImage(photoURL)
+                                          : null,
+                                      child: photoURL == null || photoURL.isEmpty
+                                          ? Text(
+                                              initial,
+                                              style: TextStyle(
+                                                color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            )
+                                          : null,
+                                    ),
+                                    title: Text(displayName),
+                                    trailing: isOrganizer
+                                        ? Chip(
+                                            label: const Text('Organizador'),
+                                            backgroundColor: Colors.amber[100],
+                                            labelStyle: const TextStyle(fontSize: 11),
+                                          )
+                                        : Icon(Icons.check_circle, 
+                                            color: Colors.green[400],
+                                            size: 20,
+                                          ),
+                                  ),
+                                );
+                              }).toList(),
+                            );
+                          },
+                        ),
 
                         const SizedBox(height: 40),
 
@@ -179,11 +249,22 @@ class _EventDetailPageState extends State<EventDetailPage> {
                               padding: const EdgeInsets.all(16),
                             ),
                           )
-                              : OutlinedButton.icon(
+                              : participants.contains(_currentUser?.uid)
+                              ? OutlinedButton.icon(
                             onPressed: () => _confirmLeave(context),
                             icon: const Icon(Icons.exit_to_app),
                             label: const Text('Salir del evento'),
                             style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.all(16),
+                            ),
+                          )
+                              : ElevatedButton.icon(
+                            onPressed: () => _confirmJoin(context, widget.eventId),
+                            icon: const Icon(Icons.add_circle_outline),
+                            label: const Text('Unirme al evento'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green[50],
+                              foregroundColor: Colors.green[700],
                               padding: const EdgeInsets.all(16),
                             ),
                           ),
@@ -563,6 +644,42 @@ class _EventDetailPageState extends State<EventDetailPage> {
     if (confirm == true) {
       await _eventCtrl.leaveEvent(widget.eventId);
       if (mounted) Navigator.pop(context);
+    }
+  }
+
+  // --- LÓGICA: UNIRSE AL EVENTO ---
+  Future<void> _confirmJoin(BuildContext context, String eventId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Unirse al evento'),
+        content: const Text(
+          '¿Deseas unirte a este evento? '
+          'El organizador recibirá una notificación.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Unirme'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      final error = await _eventCtrl.joinEvent(eventId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error ?? '¡Te uniste al evento!'),
+            backgroundColor: error == null ? Colors.green : Colors.red,
+          ),
+        );
+      }
     }
   }
 }
