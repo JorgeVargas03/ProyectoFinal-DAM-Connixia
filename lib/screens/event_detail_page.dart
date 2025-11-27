@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../controllers/event_controller.dart';
+import 'location_picker_page.dart';
 
 class EventDetailPage extends StatefulWidget {
   final String eventId;
@@ -16,11 +19,18 @@ class EventDetailPage extends StatefulWidget {
 class _EventDetailPageState extends State<EventDetailPage> {
   final _eventCtrl = EventController();
   final _currentUser = FirebaseAuth.instance.currentUser;
+  GoogleMapController? _mapController;
 
   // Formateador de fecha
   String _formatDate(Timestamp? timestamp) {
     if (timestamp == null) return 'Fecha por definir';
     return DateFormat('EEEE d, MMMM yyyy - HH:mm', 'es').format(timestamp.toDate());
+  }
+
+  @override
+  void dispose() {
+    _mapController?.dispose();
+    super.dispose();
   }
 
   @override
@@ -57,6 +67,11 @@ class _EventDetailPageState extends State<EventDetailPage> {
           final creatorName = data['creatorName'] ?? 'Desconocido';
           final address = data['location']?['address'] ?? 'Ubicación pendiente';
           final participants = List.from(data['participants'] ?? []);
+          
+          // Extraer coordenadas del mapa
+          final location = data['location'] as Map<String, dynamic>?;
+          final lat = location?['lat'] as double?;
+          final lng = location?['lng'] as double?;
 
           // Validar permisos
           final isCreator = _currentUser?.uid == creatorId;
@@ -70,8 +85,8 @@ class _EventDetailPageState extends State<EventDetailPage> {
                   IconButton(
                     icon: const Icon(Icons.edit),
                     tooltip: 'Editar información',
-                    // PASAMOS LA FECHA ACTUAL (date) AL DIÁLOGO
-                    onPressed: () => _showEditDialog(context, title, description, creatorId, date),
+                    // PASAMOS LA FECHA ACTUAL Y UBICACIÓN AL DIÁLOGO
+                    onPressed: () => _showEditDialog(context, title, description, creatorId, date, lat, lng, address),
                   ),
 
                 // Botón compartir (Visual)
@@ -82,8 +97,8 @@ class _EventDetailPageState extends State<EventDetailPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // --- SECCIÓN 1: EL MAPA (PLACEHOLDER) ---
-                  _buildMapPlaceholder(),
+                  // --- SECCIÓN 1: EL MAPA ---
+                  _buildMapView(lat, lng, address),
 
                   Padding(
                     padding: const EdgeInsets.all(20),
@@ -185,32 +200,61 @@ class _EventDetailPageState extends State<EventDetailPage> {
     );
   }
 
-  // --- WIDGET DEL MAPA (HUECO) ---
-  Widget _buildMapPlaceholder() {
-    return Container(
+  // --- WIDGET DEL MAPA REAL ---
+  Widget _buildMapView(double? lat, double? lng, String address) {
+    if (lat == null || lng == null) {
+      return Container(
+        height: 250,
+        width: double.infinity,
+        color: Colors.grey[200],
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.location_off, size: 48, color: Colors.grey),
+              SizedBox(height: 8),
+              Text('Sin ubicación definida'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final position = LatLng(lat, lng);
+
+    return SizedBox(
       height: 250,
       width: double.infinity,
-      color: Colors.grey[200],
       child: Stack(
         children: [
-          const Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.map, size: 48, color: Colors.grey),
-                SizedBox(height: 8),
-                Text('Mapa interactivo'),
-                Text('(Próximamente)', style: TextStyle(fontSize: 12, color: Colors.grey)),
-              ],
+          GoogleMap(
+            initialCameraPosition: CameraPosition(
+              target: position,
+              zoom: 15,
             ),
+            onMapCreated: (controller) => _mapController = controller,
+            markers: {
+              Marker(
+                markerId: const MarkerId('event_location'),
+                position: position,
+                infoWindow: InfoWindow(
+                  title: 'Punto de encuentro',
+                  snippet: address,
+                ),
+              ),
+            },
+            myLocationEnabled: true,
+            myLocationButtonEnabled: false,
+            zoomControlsEnabled: false,
           ),
           Positioned(
             bottom: 16,
             right: 16,
             child: FloatingActionButton.small(
               heroTag: 'openMaps',
-              onPressed: () {},
+              onPressed: () => _openInMaps(lat, lng),
               child: const Icon(Icons.directions),
+              tooltip: 'Abrir en Google Maps',
             ),
           ),
         ],
@@ -218,8 +262,31 @@ class _EventDetailPageState extends State<EventDetailPage> {
     );
   }
 
-  // --- LÓGICA: EDITAR EVENTO (CON FECHA) ---
-  void _showEditDialog(BuildContext context, String currentTitle, String currentDesc, String creatorId, Timestamp? existingTimestamp) {
+  // Abrir en Google Maps
+  Future<void> _openInMaps(double lat, double lng) async {
+    final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo abrir Google Maps')),
+        );
+      }
+    }
+  }
+
+  // --- LÓGICA: EDITAR EVENTO (CON FECHA Y UBICACIÓN) ---
+  void _showEditDialog(
+    BuildContext context, 
+    String currentTitle, 
+    String currentDesc, 
+    String creatorId, 
+    Timestamp? existingTimestamp,
+    double? existingLat,
+    double? existingLng,
+    String existingAddress,
+  ) {
     final titleCtrl = TextEditingController(text: currentTitle);
     final descCtrl = TextEditingController(text: currentDesc);
 
@@ -227,6 +294,11 @@ class _EventDetailPageState extends State<EventDetailPage> {
     DateTime selectedDate = existingTimestamp != null
         ? existingTimestamp.toDate()
         : DateTime.now();
+    
+    // Variables para la ubicación
+    double? selectedLat = existingLat;
+    double? selectedLng = existingLng;
+    String selectedAddress = existingAddress;
 
     showDialog(
       context: context,
@@ -306,12 +378,81 @@ class _EventDetailPageState extends State<EventDetailPage> {
                       // Advertencia si la fecha es pasada
                       if (selectedDate.isBefore(DateTime.now()))
                         Padding(
-                          padding: const EdgeInsets.only(top: 5),
+                          padding: const EdgeInsets.only(top: 8),
                           child: Text(
-                              'Advertencia: La fecha está en el pasado',
-                              style: TextStyle(color: Colors.orange[800], fontSize: 12)
+                            '⚠️ La fecha ya pasó',
+                            style: TextStyle(color: Colors.orange[700], fontSize: 12),
                           ),
-                        )
+                        ),
+                      
+                      const SizedBox(height: 20),
+                      
+                      // --- SELECTOR DE UBICACIÓN ---
+                      const Text('Ubicación:', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      InkWell(
+                        onTap: () async {
+                          final result = await Navigator.of(context).push<Map<String, dynamic>>(
+                            MaterialPageRoute(builder: (_) => const LocationPickerPage()),
+                          );
+                          
+                          if (result != null) {
+                            setStateDialog(() {
+                              selectedLat = result['lat'];
+                              selectedLng = result['lng'];
+                              selectedAddress = result['address'];
+                            });
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey[300]!),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.location_on,
+                                color: selectedLat != null 
+                                  ? Theme.of(context).colorScheme.primary 
+                                  : Colors.grey,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      selectedLat != null 
+                                        ? 'Ubicación seleccionada' 
+                                        : 'Seleccionar ubicación',
+                                      style: TextStyle(
+                                        fontWeight: selectedLat != null 
+                                          ? FontWeight.bold 
+                                          : FontWeight.normal,
+                                      ),
+                                    ),
+                                    if (selectedLat != null) ...[
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        selectedAddress,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[600],
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              const Icon(Icons.chevron_right, color: Colors.grey),
+                            ],
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -338,6 +479,14 @@ class _EventDetailPageState extends State<EventDetailPage> {
                         return;
                       }
 
+                      // VALIDACIÓN: Ubicación requerida
+                      if (selectedLat == null || selectedLng == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Debes seleccionar una ubicación')),
+                        );
+                        return;
+                      }
+
                       Navigator.pop(ctx); // Cerrar diálogo
 
                       final error = await _eventCtrl.updateEvent(
@@ -346,7 +495,12 @@ class _EventDetailPageState extends State<EventDetailPage> {
                           {
                             'title': newTitle,
                             'description': newDesc,
-                            'date': Timestamp.fromDate(selectedDate), // Guardamos la nueva fecha
+                            'date': Timestamp.fromDate(selectedDate),
+                            'location': {
+                              'lat': selectedLat,
+                              'lng': selectedLng,
+                              'address': selectedAddress,
+                            },
                           }
                       );
 

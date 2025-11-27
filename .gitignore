@@ -12,6 +12,9 @@
 .swiftpm/
 migrate_working_dir/
 
+# Environment variables
+.env
+
 android/app/google-services.json
 lib/firebase_options.dart
 firebase.json

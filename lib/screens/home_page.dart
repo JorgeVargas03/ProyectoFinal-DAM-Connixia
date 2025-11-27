@@ -8,7 +8,6 @@ import '../controllers/auth_controller.dart';
 import '../controllers/location_controller.dart';
 import '../controllers/notification_controller.dart';
 import 'profile_page.dart';
-import 'package:characters/characters.dart';
 import 'events_page.dart';
 
 class HomePage extends StatefulWidget {

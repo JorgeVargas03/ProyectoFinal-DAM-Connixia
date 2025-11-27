@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import '../controllers/event_controller.dart';
 import 'event_detail_page.dart';
+import 'location_picker_page.dart';
 
 class EventsPage extends StatefulWidget {
   const EventsPage({super.key});
@@ -221,6 +222,11 @@ class _EventsPageState extends State<EventsPage> {
 
     // Inicializamos la fecha propuesta (ej. dentro de 2 horas)
     DateTime selectedDate = DateTime.now().add(const Duration(hours: 2));
+    
+    // Variables para almacenar la ubicación seleccionada
+    double? selectedLat;
+    double? selectedLng;
+    String selectedAddress = 'Sin ubicación';
 
     showDialog(
       context: context,
@@ -315,6 +321,75 @@ class _EventsPageState extends State<EventsPage> {
                             style: TextStyle(color: Colors.red[700], fontSize: 12),
                           ),
                         ),
+                      
+                      const SizedBox(height: 20),
+                      
+                      // --- SELECTOR DE UBICACIÓN ---
+                      const Text('¿Dónde?', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      InkWell(
+                        onTap: () async {
+                          final result = await Navigator.of(context).push<Map<String, dynamic>>(
+                            MaterialPageRoute(builder: (_) => const LocationPickerPage()),
+                          );
+                          
+                          if (result != null) {
+                            setStateDialog(() {
+                              selectedLat = result['lat'];
+                              selectedLng = result['lng'];
+                              selectedAddress = result['address'];
+                            });
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey[300]!),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.location_on,
+                                color: selectedLat != null 
+                                  ? Theme.of(context).colorScheme.primary 
+                                  : Colors.grey,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      selectedLat != null 
+                                        ? 'Ubicación seleccionada' 
+                                        : 'Seleccionar ubicación',
+                                      style: TextStyle(
+                                        fontWeight: selectedLat != null 
+                                          ? FontWeight.bold 
+                                          : FontWeight.normal,
+                                      ),
+                                    ),
+                                    if (selectedLat != null) ...[
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        selectedAddress,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[600],
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              const Icon(Icons.chevron_right, color: Colors.grey),
+                            ],
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -342,20 +417,23 @@ class _EventsPageState extends State<EventsPage> {
                         return;
                       }
 
-                      // COORDENADAS FIJAS (MOCKUP) - Aquí luego usaremos el mapa real
-                      const lat = 19.4326;
-                      const lng = -99.1332;
-                      const address = "Punto en el mapa (Demo)";
+                      // --- VALIDACIÓN DE UBICACIÓN ---
+                      if (selectedLat == null || selectedLng == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Debes seleccionar una ubicación')),
+                        );
+                        return;
+                      }
 
                       Navigator.pop(ctx); // Cerrar
 
                       final error = await _eventCtrl.createEvent(
                         title: title,
                         description: descCtrl.text.trim(),
-                        date: selectedDate, // <--- Usamos la fecha elegida
-                        lat: lat,
-                        lng: lng,
-                        address: address,
+                        date: selectedDate,
+                        lat: selectedLat!,
+                        lng: selectedLng!,
+                        address: selectedAddress,
                       );
 
                       if (mounted && error != null) {

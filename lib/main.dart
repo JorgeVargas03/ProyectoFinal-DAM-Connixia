@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart'; // ← AGREGAR
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'controllers/notification_controller.dart';
 import 'providers/theme_provider.dart';
 import 'screens/sign_in_page.dart';
@@ -10,6 +11,10 @@ import 'screens/home_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Cargar variables de entorno
+  await dotenv.load(fileName: ".env");
+  
   await Firebase.initializeApp();
   final notifCtrl = NotificationController();
   await notifCtrl.initialize();
