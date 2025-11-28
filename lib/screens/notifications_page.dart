@@ -86,14 +86,17 @@ class _NotificationsPageState extends State<NotificationsPage> {
               final doc = notifications[index];
               final data = doc.data() as Map<String, dynamic>;
               final notificationId = doc.id;
-              
+
               final isRead = data['read'] ?? false;
               final message = data['message'] ?? 'Nueva notificación';
-              final eventId = data['eventId'];
               final type = data['type'] ?? 'unknown';
+              final status = data['status'] ?? 'pending';
+              final eventId = data['eventId'];
+
+              // --- CORRECCIÓN 1: RECUPERAR EL TIEMPO (Esto faltaba) ---
               final timestamp = data['createdAt'] as Timestamp?;
-              
               String timeAgo = 'Ahora';
+
               if (timestamp != null) {
                 final diff = DateTime.now().difference(timestamp.toDate());
                 if (diff.inDays > 0) {
@@ -104,7 +107,57 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   timeAgo = 'hace ${diff.inMinutes}m';
                 }
               }
+              // ---------------------------------------------------------
 
+              // LÓGICA ESPECIAL PARA INVITACIONES
+              if (type == 'event_invite') {
+                final isPending = status == 'pending';
+
+                return Card(
+                  color: isRead ? Colors.white : Colors.blue[50],
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Column(
+                    children: [
+                      ListTile(
+                        leading: const CircleAvatar(
+                          backgroundColor: Colors.indigo,
+                          child: Icon(Icons.mail, color: Colors.white),
+                        ),
+                        title: Text(message, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text(isPending ? '¿Deseas asistir?' : 'Invitación $status • $timeAgo'),
+                      ),
+                      if (isPending)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8.0, right: 8.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              TextButton(
+                                onPressed: () {
+                                  _notificationService.respondToInvitation(notificationId, eventId, false);
+                                },
+                                child: const Text('Rechazar', style: TextStyle(color: Colors.grey)),
+                              ),
+                              const SizedBox(width: 8),
+                              ElevatedButton(
+                                onPressed: () {
+                                  _notificationService.respondToInvitation(notificationId, eventId, true);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('¡Te has unido al evento!')),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo),
+                                child: const Text('Aceptar', style: TextStyle(color: Colors.white)),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              }
+
+              // LÓGICA PARA NOTIFICACIONES NORMALES
               return Dismissible(
                 key: Key(notificationId),
                 direction: DismissDirection.endToStart,
@@ -134,31 +187,26 @@ class _NotificationsPageState extends State<NotificationsPage> {
                       fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
                     ),
                   ),
-                  subtitle: Text(timeAgo),
-                  trailing: isRead 
-                      ? null 
+                  subtitle: Text(timeAgo), // Aquí se usa la variable que faltaba
+                  trailing: isRead
+                      ? null
                       : Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: Colors.blue,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: Colors.blue,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
                   onTap: () async {
-                    // Marcar como leída
                     if (!isRead) {
                       await _notificationService.markAsRead(notificationId);
                     }
-                    
                     // Navegar al evento si existe
                     if (eventId != null && mounted) {
-                      final eventDoc = await FirebaseFirestore.instance
-                          .collection('events')
-                          .doc(eventId)
-                          .get();
-                      
-                      if (eventDoc.exists && mounted) {
+                      // Verificar si el evento aún existe antes de navegar
+                      final doc = await FirebaseFirestore.instance.collection('events').doc(eventId).get();
+                      if (doc.exists && mounted) {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -166,6 +214,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
                               eventId: eventId,
                             ),
                           ),
+                        );
+                      } else if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('El evento ya no existe')),
                         );
                       }
                     }
@@ -179,10 +231,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
     );
   }
 
+  // --- CORRECCIÓN 2: AGREGAR EL ICONO DE INVITACIÓN AL SWITCH ---
   IconData _getIconForType(String type) {
     switch (type) {
       case 'event_join':
         return Icons.person_add;
+      case 'event_invite': // Nuevo caso
+        return Icons.mail;
       case 'event_update':
         return Icons.event;
       case 'event_reminder':

@@ -6,6 +6,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../controllers/event_controller.dart';
 import 'location_picker_page.dart';
+import '../widgets/invite_friends_dialog.dart';
 
 class EventDetailPage extends StatefulWidget {
   final String eventId;
@@ -152,14 +153,27 @@ class _EventDetailPageState extends State<EventDetailPage> {
                           children: [
                             Text('Asistentes (${participants.length})',
                                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+
                             if (isCreator)
+                              IconButton.filledTonal(
+                                onPressed: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (_) => InviteFriendsDialog(
+                                      eventId: widget.eventId,
+                                      eventTitle: title,
+                                      currentParticipants: participants,
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.person_add),
+                                tooltip: 'Invitar amigos',
+                              )
+                            else
+                            // Si no eres creador, mostramos el chip de siempre
                               Chip(
                                 label: const Text('Organizador'),
-                                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                                labelStyle: TextStyle(
-                                  color: Theme.of(context).colorScheme.onPrimaryContainer,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                // ... tus estilos
                               ),
                           ],
                         ),

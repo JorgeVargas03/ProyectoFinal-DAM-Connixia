@@ -14,6 +14,7 @@ import 'events_page.dart';
 import 'explore_events_page.dart';
 import 'event_detail_page.dart';
 import 'notifications_page.dart';
+import 'contacts_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -158,7 +159,8 @@ class _HomePageState extends State<HomePage> {
                     borderRadius: BorderRadius.circular(40),
                     child: CircleAvatar(
                       backgroundColor: Colors.white,
-                      backgroundImage: hasPhoto ? NetworkImage(u.photoURL!) : null,
+                      backgroundImage:
+                      hasPhoto ? NetworkImage(u.photoURL!) : null,
                       child: hasPhoto
                           ? null
                           : Text(
@@ -174,6 +176,7 @@ class _HomePageState extends State<HomePage> {
                 );
               },
             ),
+
             ListTile(
               leading: const Icon(Icons.home),
               title: const Text('Inicio'),
@@ -184,12 +187,24 @@ class _HomePageState extends State<HomePage> {
               title: const Text('Mi perfil'),
               onTap: _openProfile,
             ),
+
+            ListTile(
+              leading: const Icon(Icons.people),
+              title: const Text('Mis Contactos'),
+              onTap: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => ContactsScreen()),
+                );
+              },
+            ),
+
             ListTile(
               leading: const Icon(Icons.event),
               title: const Text('Mis eventos'),
               onTap: () {
-                Navigator.of(context).pop(); // 1. Cierra el Drawer
-                Navigator.of(context).push(  // 2. Navega a la página de eventos
+                Navigator.of(context).pop();
+                Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const EventsPage()),
                 );
               },
@@ -214,7 +229,8 @@ class _HomePageState extends State<HomePage> {
                   final count = snapshot.data ?? 0;
                   if (count == 0) return const SizedBox.shrink();
                   return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.red,
                       borderRadius: BorderRadius.circular(12),
@@ -244,7 +260,8 @@ class _HomePageState extends State<HomePage> {
               onTap: () {
                 Navigator.of(context).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Contacta soporte@connixia.app')),
+                  const SnackBar(
+                      content: Text('Contacta soporte@connixia.app')),
                 );
               },
             ),
@@ -252,7 +269,8 @@ class _HomePageState extends State<HomePage> {
             const Divider(),
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Cerrar sesión', style: TextStyle(color: Colors.red)),
+              title: const Text('Cerrar sesión',
+                  style: TextStyle(color: Colors.red)),
               onTap: _auth.signOut,
             ),
             const SizedBox(height: 8),

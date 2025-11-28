@@ -121,4 +121,61 @@ class NotificationService {
       debugPrint('Error limpiando notificaciones: $e');
     }
   }
+
+  // ... (dentro de class NotificationService)
+
+  // 1. ENVIAR INVITACIÓN (Lo usa el organizador)
+  Future<void> sendInvitation({
+    required String eventId,
+    required String eventTitle,
+    required String targetUserId, // El ID de tu amigo
+    required String senderName,   // Tu nombre
+  }) async {
+    try {
+      await _db.collection('notifications').add({
+        'type': 'event_invite', // <--- TIPO CLAVE
+        'eventId': eventId,
+        'eventTitle': eventTitle,
+        'recipientId': targetUserId,
+        'senderId': currentUid,
+        'senderName': senderName,
+        'message': '$senderName te invitó al evento "$eventTitle"',
+        'read': false,
+        'status': 'pending', // pending, accepted, rejected
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Error enviando invitación: $e');
+    }
+  }
+
+  // 2. RESPONDER INVITACIÓN (Lo usa el amigo al dar click)
+  Future<void> respondToInvitation(String notificationId, String eventId, bool accepted) async {
+    if (currentUid == null) return;
+
+    try {
+      final batch = _db.batch();
+
+      // A) Actualizar la notificación para que no se pueda volver a clicar
+      final notifRef = _db.collection('notifications').doc(notificationId);
+      batch.update(notifRef, {
+        'status': accepted ? 'accepted' : 'rejected',
+        'read': true, // Se marca como leída automáticamente
+      });
+
+      // B) Si aceptó, lo agregamos al evento
+      if (accepted) {
+        final eventRef = _db.collection('events').doc(eventId);
+        batch.update(eventRef, {
+          'participants': FieldValue.arrayUnion([currentUid])
+        });
+      }
+
+      await batch.commit();
+    } catch (e) {
+      debugPrint('Error respondiendo invitación: $e');
+      throw e; // Relanzamos para mostrar snackbar en la UI
+    }
+  }
+
 }
