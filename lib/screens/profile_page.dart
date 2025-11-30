@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // <--- 1. IMPORTANTE: Agregar este import
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
@@ -32,6 +32,25 @@ class _ProfilePageState extends State<ProfilePage>
   bool _isChangingPassword = false;
 
   late TabController _tabController;
+
+  // Lista de colores :D
+  final List<Color> _availableColors = [
+    const Color(0xFF5C6BC0), // Indigo Suave
+    const Color(0xFF42A5F5), // Azul Calmado
+    const Color(0xFF26C6DA), // Turquesa
+    const Color(0xFF26A69A), // Verde Cerceta
+    const Color(0xFF66BB6A), // Verde Hoja
+    const Color(0xFFC0CA33), // Lima Oscura
+    const Color(0xFFFFCA28), // Ámbar Miel
+    const Color(0xFFFFA726), // Naranja Atardecer
+    const Color(0xFFEF5350), // Rojo Coral
+    const Color(0xFFEC407A), // Rosa Pastel
+    const Color(0xFFAB47BC), // Lavanda
+    const Color(0xFF7E57C2), // Morado Profundo
+    const Color(0xFF8D6E63), // Marrón Tierra
+    const Color(0xFF78909C), // Gris Azulado
+    const Color(0xFF546E7A), // Gris Pizarra
+  ];
 
   @override
   void initState() {
@@ -177,10 +196,7 @@ class _ProfilePageState extends State<ProfilePage>
       );
 
       if (result['success']) {
-        // 1. Actualizar Auth
         await _user!.updatePhotoURL(result['profileImageUrl']);
-
-        // 2. <--- ACTUALIZACIÓN FIRESTORE: Guardamos la URL en la BD también
         await FirebaseFirestore.instance
             .collection('users')
             .doc(_user!.uid)
@@ -190,7 +206,6 @@ class _ProfilePageState extends State<ProfilePage>
         _loadUser();
         _showSnackBar('Foto actualizada correctamente');
       } else {
-        _showSnackBar(result['message'] ?? 'Error desconocido', isError: true);
         _showSnackBar(result['message'] ?? 'Error desconocido', isError: true);
       }
     } catch (e) {
@@ -325,7 +340,7 @@ class _ProfilePageState extends State<ProfilePage>
                     _user!.photoURL!,
                     fit: BoxFit.contain,
                     errorBuilder: (_, __, ___) =>
-                        const Icon(Icons.error, color: Colors.white, size: 64),
+                    const Icon(Icons.error, color: Colors.white, size: 64),
                   ),
                 ),
               ),
@@ -365,15 +380,11 @@ class _ProfilePageState extends State<ProfilePage>
       final filename = 'profile_${_user!.uid}';
       final result = await ImageUploadService.deleteProfileImage(filename);
       if (result['success']) {
-        // 1. Actualizar Auth
         await _user!.updatePhotoURL(null);
-
-        // 2. <--- ACTUALIZACIÓN FIRESTORE: Ponemos null en la BD
         await FirebaseFirestore.instance
             .collection('users')
             .doc(_user!.uid)
             .update({'photoURL': null});
-
         await FirebaseAuth.instance.currentUser?.reload();
         _loadUser();
         _showSnackBar('Foto eliminada');
@@ -392,15 +403,11 @@ class _ProfilePageState extends State<ProfilePage>
 
     setState(() => _isSaving = true);
     try {
-      // 1. Actualizar Auth
       await _user!.updateDisplayName(newName);
-
-      // 2. <--- ACTUALIZACIÓN FIRESTORE: Actualizamos el nombre visible
       await FirebaseFirestore.instance
           .collection('users')
           .doc(_user!.uid)
           .update({'displayName': newName});
-
       await FirebaseAuth.instance.currentUser?.reload();
       _loadUser();
       _showSnackBar('Perfil actualizado');
@@ -427,6 +434,13 @@ class _ProfilePageState extends State<ProfilePage>
   Widget build(BuildContext context) {
     final hasPhoto = _user?.photoURL != null && _user!.photoURL!.isNotEmpty;
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
+    //Color para TabBar segun el modo
+    final activeColor = isDark
+        ? Color.lerp(primaryColor, Colors.white, 0.4)!
+        : Color.lerp(primaryColor, Colors.black, 0.2)!;
 
     return Scaffold(
       appBar: AppBar(
@@ -434,6 +448,9 @@ class _ProfilePageState extends State<ProfilePage>
         elevation: 0,
         bottom: TabBar(
           controller: _tabController,
+          labelColor: activeColor,
+          indicatorColor: activeColor,
+          unselectedLabelColor: Colors.white.withOpacity(0.7),
           tabs: const [
             Tab(icon: Icon(Icons.person), text: 'Perfil'),
             Tab(icon: Icon(Icons.lock), text: 'Seguridad'),
@@ -477,7 +494,9 @@ class _ProfilePageState extends State<ProfilePage>
           gradient: LinearGradient(
             colors: [
               theme.colorScheme.primaryContainer,
-              theme.colorScheme.secondaryContainer,
+              Theme.of(context).brightness == Brightness.dark
+                  ? theme.colorScheme.surface
+                  : Colors.white,
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -498,13 +517,13 @@ class _ProfilePageState extends State<ProfilePage>
                         : null,
                     child: !hasPhoto
                         ? Text(
-                            _userInitial(),
-                            style: TextStyle(
-                              fontSize: 48,
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.primary,
-                            ),
-                          )
+                      _userInitial(),
+                      style: TextStyle(
+                        fontSize: 48,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.primary,
+                      ),
+                    )
                         : null,
                   ),
                 ),
@@ -558,10 +577,10 @@ class _ProfilePageState extends State<ProfilePage>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer.withOpacity(0.5),
+                color: theme.colorScheme.primaryContainer.withOpacity(0.7),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: theme.colorScheme.primary.withOpacity(0.3),
+                  color: theme.colorScheme.primary.withOpacity(0.5),
                   width: 1.5,
                 ),
               ),
@@ -570,7 +589,7 @@ class _ProfilePageState extends State<ProfilePage>
                 children: [
                   Icon(
                     _getAuthProviderIcon(),
-                    size: 18,
+                    size: 22,
                     color: theme.colorScheme.primary,
                   ),
                   const SizedBox(width: 6),
@@ -603,11 +622,11 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   Widget _buildStatItem(
-    IconData icon,
-    String label,
-    String value,
-    ThemeData theme,
-  ) {
+      IconData icon,
+      String label,
+      String value,
+      ThemeData theme,
+      ) {
     return Column(
       children: [
         Icon(icon, color: theme.colorScheme.primary, size: 28),
@@ -673,13 +692,13 @@ class _ProfilePageState extends State<ProfilePage>
                   onPressed: _isSaving ? null : _saveProfile,
                   icon: _isSaving
                       ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
                       : const Icon(Icons.save),
                   label: const Text('Guardar cambios'),
                   style: ElevatedButton.styleFrom(
@@ -759,13 +778,13 @@ class _ProfilePageState extends State<ProfilePage>
                         onPressed: _isChangingPassword ? null : _changePassword,
                         icon: _isChangingPassword
                             ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
                             : const Icon(Icons.check),
                         label: const Text('Actualizar contraseña'),
                         style: ElevatedButton.styleFrom(
@@ -900,6 +919,8 @@ class _ProfilePageState extends State<ProfilePage>
                   ],
                 ),
                 const SizedBox(height: 16),
+
+                // --- MODO OSCURO ---
                 SwitchListTile(
                   title: const Text('Modo oscuro'),
                   subtitle: const Text('Activa el tema oscuro en toda la app'),
@@ -916,6 +937,44 @@ class _ProfilePageState extends State<ProfilePage>
                     color: theme.colorScheme.primary,
                   ),
                 ),
+
+                const Divider(height: 32),
+
+                // --- SELECTOR DE COLOR (Botón que abre diálogo) ---
+                Text(
+                  'Color de énfasis',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w600
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                        color: themeProvider.seedColor,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.grey.withOpacity(0.5),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          )
+                        ]
+                    ),
+                  ),
+                  title: const Text('Cambiar color del tema'),
+                  subtitle: const Text('Toca para elegir de la paleta'),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () => _showColorPickerDialog(context, themeProvider),
+                ),
               ],
             ),
           ),
@@ -924,6 +983,104 @@ class _ProfilePageState extends State<ProfilePage>
     );
   }
 
+  // --- DIÁLOGO PARA SELECCIONAR COLOR ---
+  void _showColorPickerDialog(BuildContext context, ThemeProvider themeProvider) {
+    // Variable para guardar el color seleccionado TEMPORALMENTE dentro del diálogo
+    Color tempSelectedColor = themeProvider.seedColor;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: const Text('Elige un color'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: GridView.builder(
+                  shrinkWrap: true,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 5,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                  ),
+                  itemCount: _availableColors.length,
+                  itemBuilder: (context, index) {
+                    final color = _availableColors[index];
+                    final isSelected = tempSelectedColor.value == color.value;
+
+                    return GestureDetector(
+                      onTap: () {
+                        setStateDialog(() {
+                          tempSelectedColor = color;
+                        });
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                          border: isSelected
+                              ? Border.all(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white
+                                : Colors.black87,
+                            width: 3.0,
+                          )
+                              : null,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: isSelected
+                            ? const Icon(Icons.check, color: Colors.white, size: 20)
+                            : null,
+                      ),
+                    );
+                  },
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancelar'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    themeProvider.setSeedColor(tempSelectedColor);
+                    Navigator.pop(ctx);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              const Icon(Icons.palette, color: Colors.white),
+                              const SizedBox(width: 10),
+                              const Text('Tema actualizado correctamente'),
+                            ],
+                          ),
+                          backgroundColor: tempSelectedColor, // Usamos el color elegido
+                          duration: const Duration(seconds: 2),
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text('Aceptar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
   Widget _buildSignOutButton() {
     return SizedBox(
       width: double.infinity,

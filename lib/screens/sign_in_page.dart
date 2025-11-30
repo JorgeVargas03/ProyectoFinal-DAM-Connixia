@@ -43,11 +43,12 @@ class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateM
   }
 
   void _showMessage(String msg) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(msg, style: const TextStyle(color: Colors.white)),
+        content: Text(msg),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF5C6BC0),
+        backgroundColor: Theme.of(context).colorScheme.error,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
@@ -61,7 +62,9 @@ class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateM
     final err = await _authCtrl.signInWithEmail(email: email, password: password);
     setState(() => _loading = false);
     if (err == null) {
-      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const HomePage()));
+      if (mounted) {
+        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const HomePage()));
+      }
     } else {
       _showMessage(err);
     }
@@ -72,7 +75,9 @@ class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateM
     final err = await _authCtrl.signInWithGoogle();
     setState(() => _loading = false);
     if (err == null) {
-      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const HomePage()));
+      if (mounted) {
+        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const HomePage()));
+      }
     } else {
       _showMessage(err);
     }
@@ -88,8 +93,12 @@ class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
+    // OBTENEMOS LOS COLORES DEL TEMA ACTUAL
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: colorScheme.surface, // Fondo dinámico
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -99,9 +108,10 @@ class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateM
               child: SlideTransition(
                 position: _slideAnimation,
                 child: Card(
-                  elevation: 12,
-                  shadowColor: Colors.indigo.withOpacity(0.3),
-                  color: Colors.white,
+                  elevation: 8,
+                  // Sombra del color primario suave
+                  shadowColor: colorScheme.primary.withOpacity(0.3),
+                  color: colorScheme.surfaceContainerLow, // Fondo tarjeta
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                   child: Padding(
                     padding: const EdgeInsets.all(32),
@@ -113,38 +123,34 @@ class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateM
                           Container(
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF5C6BC0), Color(0xFF7E57C2)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
+                              color: colorScheme.primary, // <--- Color sólido
                               borderRadius: BorderRadius.circular(20),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFF5C6BC0).withOpacity(0.4),
+                                  color: colorScheme.primary.withOpacity(0.4),
                                   blurRadius: 20,
                                   offset: const Offset(0, 8),
                                 ),
                               ],
                             ),
-                            child: const Icon(Icons.lock_outline, size: 60, color: Colors.white),
+                            child: Icon(Icons.lock_outline, size: 60, color: colorScheme.onPrimary),
                           ),
                           const SizedBox(height: 28),
-                          const Text(
+                          Text(
                             '¡Bienvenido!',
                             style: TextStyle(
                               fontSize: 32,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF2C3E50),
+                              color: colorScheme.onSurface,
                               letterSpacing: -0.5,
                             ),
                           ),
                           const SizedBox(height: 8),
-                          const Text(
+                          Text(
                             'Inicia sesión para continuar',
                             style: TextStyle(
                               fontSize: 16,
-                              color: Color(0xFF7F8C8D),
+                              color: colorScheme.onSurfaceVariant,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -152,25 +158,23 @@ class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateM
                           TextFormField(
                             controller: _emailCtrl,
                             keyboardType: TextInputType.emailAddress,
-                            style: const TextStyle(color: Color(0xFF2C3E50)),
+                            style: TextStyle(color: colorScheme.onSurface),
                             decoration: InputDecoration(
                               labelText: 'Correo electrónico',
-                              labelStyle: const TextStyle(color: Color(0xFF7F8C8D)),
-                              prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF5C6BC0)),
+                              prefixIcon: Icon(Icons.email_outlined, color: colorScheme.primary),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
                               ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                                borderSide: BorderSide(color: colorScheme.outline),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(color: Color(0xFF5C6BC0), width: 2),
+                                borderSide: BorderSide(color: colorScheme.primary, width: 2),
                               ),
                               filled: true,
-                              fillColor: const Color(0xFFF8F9FA),
+                              fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.3),
                             ),
                             validator: (value) {
                               if (value == null || value.isEmpty) return 'Ingresa tu correo';
@@ -182,32 +186,30 @@ class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateM
                           TextFormField(
                             controller: _passCtrl,
                             obscureText: _obscurePassword,
-                            style: const TextStyle(color: Color(0xFF2C3E50)),
+                            style: TextStyle(color: colorScheme.onSurface),
                             decoration: InputDecoration(
                               labelText: 'Contraseña',
-                              labelStyle: const TextStyle(color: Color(0xFF7F8C8D)),
-                              prefixIcon: const Icon(Icons.lock_outlined, color: Color(0xFF5C6BC0)),
+                              prefixIcon: Icon(Icons.lock_outlined, color: colorScheme.primary),
                               suffixIcon: IconButton(
                                 icon: Icon(
                                   _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                                  color: const Color(0xFF7F8C8D),
+                                  color: colorScheme.onSurfaceVariant,
                                 ),
                                 onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                               ),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
                               ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                                borderSide: BorderSide(color: colorScheme.outline),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(color: Color(0xFF5C6BC0), width: 2),
+                                borderSide: BorderSide(color: colorScheme.primary, width: 2),
                               ),
                               filled: true,
-                              fillColor: const Color(0xFFF8F9FA),
+                              fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.3),
                             ),
                             validator: (value) {
                               if (value == null || value.isEmpty) return 'Ingresa tu contraseña';
@@ -222,36 +224,36 @@ class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateM
                             child: ElevatedButton(
                               onPressed: _loading ? null : _onSignIn,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF5C6BC0),
-                                foregroundColor: Colors.white,
+                                backgroundColor: colorScheme.primary,
+                                foregroundColor: colorScheme.onPrimary,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                 elevation: 4,
-                                shadowColor: const Color(0xFF5C6BC0).withOpacity(0.5),
+                                shadowColor: colorScheme.primary.withOpacity(0.5),
                               ),
                               child: _loading
-                                  ? const SizedBox(
-                                      width: 24,
-                                      height: 24,
-                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                    )
+                                  ? SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: colorScheme.onPrimary),
+                              )
                                   : const Text(
-                                      'Iniciar sesión',
-                                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                                    ),
+                                'Iniciar sesión',
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              ),
                             ),
                           ),
                           const SizedBox(height: 24),
                           Row(
                             children: [
-                              Expanded(child: Divider(color: Colors.grey[300], thickness: 1)),
+                              Expanded(child: Divider(color: colorScheme.outlineVariant)),
                               Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 16),
                                 child: Text(
                                   'O continúa con',
-                                  style: TextStyle(color: Colors.grey[600], fontSize: 14, fontWeight: FontWeight.w500),
+                                  style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14, fontWeight: FontWeight.w500),
                                 ),
                               ),
-                              Expanded(child: Divider(color: Colors.grey[300], thickness: 1)),
+                              Expanded(child: Divider(color: colorScheme.outlineVariant)),
                             ],
                           ),
                           const SizedBox(height: 24),
@@ -262,19 +264,14 @@ class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateM
                               onPressed: _loading ? null : _onGoogleSignIn,
                               style: OutlinedButton.styleFrom(
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                side: const BorderSide(color: Color(0xFFE0E0E0), width: 2),
-                                backgroundColor: Colors.white,
-                                foregroundColor: const Color(0xFF2C3E50),
+                                side: BorderSide(color: colorScheme.outline, width: 2),
+                                backgroundColor: colorScheme.surface,
+                                foregroundColor: colorScheme.onSurface,
                               ),
                               icon: SvgPicture.network(
                                 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
                                 height: 24,
                                 width: 24,
-                                placeholderBuilder: (context) => const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                ),
                               ),
                               label: const Text(
                                 'Continuar con Google',
@@ -286,20 +283,20 @@ class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateM
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Text(
-                                '¿No tienes cuenta?',
-                                style: TextStyle(color: Color(0xFF7F8C8D), fontSize: 15),
+                              Text(
+                                '¿No tienes cuenta? ',
+                                style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 15),
                               ),
                               TextButton(
                                 onPressed: () => Navigator.of(context).push(
                                   MaterialPageRoute(builder: (_) => const SignUpPage()),
                                 ),
-                                child: const Text(
+                                child: Text(
                                   'Regístrate',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 15,
-                                    color: Color(0xFF5C6BC0),
+                                    color: colorScheme.primary,
                                   ),
                                 ),
                               ),

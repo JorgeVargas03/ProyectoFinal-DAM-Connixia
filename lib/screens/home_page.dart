@@ -1,3 +1,4 @@
+// (Solo los imports necesarios)
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:shake/shake.dart';
@@ -97,8 +98,11 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    // Tomamos los colores del tema
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      drawer: _buildDrawer(),
+      drawer: _buildDrawer(colorScheme), // Pasamos el esquema de color
       body: _showMap ? _buildMapView() : _buildDashboard(context),
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
@@ -107,6 +111,9 @@ class _HomePageState extends State<HomePage> {
           FloatingActionButton.extended(
             heroTag: 'map',
             onPressed: _toggleMap,
+            // Colores dinámicos
+            backgroundColor: colorScheme.secondaryContainer,
+            foregroundColor: colorScheme.onSecondaryContainer,
             icon: Icon(_showMap ? Icons.dashboard : Icons.map),
             label: Text(_showMap ? 'Panel' : 'Mapa'),
           ),
@@ -114,6 +121,8 @@ class _HomePageState extends State<HomePage> {
           FloatingActionButton.extended(
             heroTag: 'arrive',
             onPressed: _onArrivedShake,
+            backgroundColor: colorScheme.primary,
+            foregroundColor: colorScheme.onPrimary,
             icon: const Icon(Icons.check_circle_outline),
             label: const Text('Llegué'),
           ),
@@ -122,7 +131,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Drawer _buildDrawer() {
+  Drawer _buildDrawer(ColorScheme colorScheme) {
     return Drawer(
       child: SafeArea(
         child: Column(
@@ -138,16 +147,26 @@ class _HomePageState extends State<HomePage> {
                     ? name[0]
                     : (email.isNotEmpty ? email[0] : 'U'))
                     .toUpperCase();
+
                 return UserAccountsDrawerHeader(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        Theme.of(context).colorScheme.primary,
-                        Theme.of(context).colorScheme.primaryContainer,
+                        colorScheme.primary, // Color base original
+                        Theme.of(context).brightness == Brightness.dark
+                            ? Color.lerp(colorScheme.primary, Colors.black, 0.6)!
+                            : Color.lerp(colorScheme.primary, Colors.white, 0.6)!,
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colorScheme.primary.withOpacity(0.4),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
                   ),
                   accountName: Text(
                     name.isNotEmpty ? name : 'Usuario',
@@ -158,17 +177,17 @@ class _HomePageState extends State<HomePage> {
                     onTap: _openProfile,
                     borderRadius: BorderRadius.circular(40),
                     child: CircleAvatar(
-                      backgroundColor: Colors.white,
+                      backgroundColor: colorScheme.surface,
                       backgroundImage:
                       hasPhoto ? NetworkImage(u.photoURL!) : null,
                       child: hasPhoto
                           ? null
                           : Text(
                         initial,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
-                          color: Colors.indigo,
+                          color: colorScheme.primary,
                         ),
                       ),
                     ),
@@ -178,7 +197,7 @@ class _HomePageState extends State<HomePage> {
             ),
 
             ListTile(
-              leading: const Icon(Icons.home),
+              leading: Icon(Icons.home, color: colorScheme.primary),
               title: const Text('Inicio'),
               onTap: () => Navigator.of(context).pop(),
             ),
@@ -232,13 +251,13 @@ class _HomePageState extends State<HomePage> {
                     padding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.red,
+                      color: colorScheme.error,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       count > 9 ? '9+' : '$count',
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: colorScheme.onError,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
@@ -268,9 +287,9 @@ class _HomePageState extends State<HomePage> {
             const Spacer(),
             const Divider(),
             ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Cerrar sesión',
-                  style: TextStyle(color: Colors.red)),
+              leading: Icon(Icons.logout, color: colorScheme.error),
+              title: Text('Cerrar sesión',
+                  style: TextStyle(color: colorScheme.error)),
               onTap: _auth.signOut,
             ),
             const SizedBox(height: 8),
@@ -281,19 +300,31 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildDashboard(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return CustomScrollView(
       slivers: [
         SliverAppBar(
           pinned: true,
           expandedHeight: 140,
           flexibleSpace: FlexibleSpaceBar(
-            title: const Text('Bienvenido'),
+            title: Text(
+              'Bienvenido',
+              style: TextStyle(
+                // Texto: Blanco si es tema Claro, Negro si es tema Oscuro
+                color: isDark ? Colors.black : Colors.white,
+                fontWeight: FontWeight.bold, // Opcional, mejora la legibilidad
+              ),
+            ),
             background: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Theme.of(context).colorScheme.primary,
-                    Theme.of(context).colorScheme.primaryContainer,
+                    colorScheme.primary,
+                    isDark
+                        ? Color.lerp(colorScheme.primary, Colors.black, 0.3)!
+                        : Color.lerp(colorScheme.primary, Colors.white, 0.3)!,
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -327,8 +358,8 @@ class _HomePageState extends State<HomePage> {
                         top: 8,
                         child: Container(
                           padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
+                          decoration: BoxDecoration(
+                            color: colorScheme.error,
                             shape: BoxShape.circle,
                           ),
                           constraints: const BoxConstraints(
@@ -337,8 +368,8 @@ class _HomePageState extends State<HomePage> {
                           ),
                           child: Text(
                             unreadCount > 9 ? '9+' : '$unreadCount',
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: colorScheme.onError,
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
                             ),
@@ -377,11 +408,13 @@ class _HomePageState extends State<HomePage> {
                     children: [
                       CircleAvatar(
                         radius: 30,
+                        backgroundColor: colorScheme.primaryContainer,
                         child: Text(
                           _userInitial(),
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
+                          style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: colorScheme.onPrimaryContainer
                           ),
                         ),
                       ),
@@ -403,10 +436,10 @@ class _HomePageState extends State<HomePage> {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: ListTile(
-                  leading: const Icon(Icons.explore),
+                  leading: Icon(Icons.explore, color: colorScheme.primary),
                   title: const Text('Explorar eventos'),
                   subtitle: const Text('Descubre eventos cerca de ti'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+                  trailing: Icon(Icons.arrow_forward_ios, size: 14, color: colorScheme.primary),
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => const ExploreEventsPage()),
@@ -421,7 +454,7 @@ class _HomePageState extends State<HomePage> {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: ListTile(
-                  leading: const Icon(Icons.check_circle_outline),
+                  leading: Icon(Icons.check_circle_outline, color: colorScheme.primary),
                   title: const Text('Confirmar llegada'),
                   subtitle: const Text('También puedes agitar el teléfono'),
                   onTap: _onArrivedShake,
@@ -441,10 +474,10 @@ class _HomePageState extends State<HomePage> {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: ListTile(
-                  leading: const Icon(Icons.event),
+                  leading: Icon(Icons.event, color: colorScheme.primary),
                   title: const Text('Eventos'),
                   subtitle: const Text('Administra tus puntos de encuentro'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+                  trailing: Icon(Icons.arrow_forward_ios, size: 14, color: colorScheme.primary),
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => const EventsPage()),
@@ -459,12 +492,12 @@ class _HomePageState extends State<HomePage> {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: ListTile(
-                  leading: const Icon(Icons.notifications),
+                  leading: Icon(Icons.notifications, color: colorScheme.primary),
                   title: const Text('Notificaciones'),
                   subtitle: const Text('Centro próximamente'),
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Centro de notificaciones en desarrollo')),
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const NotificationsPage()),
                     );
                   },
                 ),
@@ -481,11 +514,10 @@ class _HomePageState extends State<HomePage> {
     if (_myPos == null) {
       return const Center(child: CircularProgressIndicator());
     }
-    
+
     return StreamBuilder<QuerySnapshot>(
       stream: _eventCtrl.getAllPublicEvents(),
       builder: (context, snapshot) {
-        // Actualizar marcadores de eventos sin setState durante build
         Set<Marker> eventMarkers = {};
         if (snapshot.hasData) {
           eventMarkers = _buildEventMarkers(snapshot.data!.docs);
@@ -497,18 +529,15 @@ class _HomePageState extends State<HomePage> {
           initialCameraPosition: CameraPosition(target: _myPos!, zoom: 13),
           onMapCreated: (c) => _mapCtrl = c,
           markers: {
-            // Mi ubicación
             Marker(
               markerId: const MarkerId('mi_ubicacion'),
               position: _myPos!,
               icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
               infoWindow: const InfoWindow(title: 'Tu ubicación'),
             ),
-            // Eventos cercanos
             ...eventMarkers,
           },
           onTap: (position) {
-            // Opcional: crear evento rápido en la posición tocada
           },
         );
       },
@@ -528,7 +557,6 @@ class _HomePageState extends State<HomePage> {
       final participants = List.from(data['participants'] ?? []);
 
       if (lat != null && lng != null && _myPos != null) {
-        // Calcular distancia
         final distance = _eventCtrl.calculateDistance(
           _myPos!.latitude,
           _myPos!.longitude,
@@ -536,10 +564,8 @@ class _HomePageState extends State<HomePage> {
           lng,
         );
 
-        // Solo mostrar eventos dentro de 50km
         if (distance <= 50) {
           final isMyEvent = creatorId == myUid;
-          
           markers.add(
             Marker(
               markerId: MarkerId(doc.id),
@@ -552,7 +578,6 @@ class _HomePageState extends State<HomePage> {
                 snippet: '${participants.length} asistentes • ${distance.toStringAsFixed(1)} km',
               ),
               onTap: () {
-                // Navegar al detalle del evento cuando se toca el marcador
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => EventDetailPage(eventId: doc.id),
