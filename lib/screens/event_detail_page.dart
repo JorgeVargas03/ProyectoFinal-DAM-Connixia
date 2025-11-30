@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../controllers/event_controller.dart';
 import 'location_picker_page.dart';
 import '../widgets/invite_friends_dialog.dart';
+import 'user_profile_page.dart';
 
 class EventDetailPage extends StatefulWidget {
   final String eventId;
@@ -180,9 +181,11 @@ class _EventDetailPageState extends State<EventDetailPage> {
                         const SizedBox(height: 16),
                         
                         // Lista de participantes con fotos
+                        // Lista de participantes con fotos
                         FutureBuilder<List<Map<String, dynamic>>>(
                           future: _eventCtrl.getParticipantsInfo(participants.cast<String>()),
                           builder: (context, participantsSnapshot) {
+                            // 1. Estado de carga
                             if (participantsSnapshot.connectionState == ConnectionState.waiting) {
                               return const Center(
                                 child: Padding(
@@ -194,6 +197,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
 
                             final participantsInfo = participantsSnapshot.data ?? [];
 
+                            // 2. Estado vacío o error
                             if (participantsInfo.isEmpty) {
                               return Text(
                                 'No se pudo cargar la información de los participantes',
@@ -201,45 +205,63 @@ class _EventDetailPageState extends State<EventDetailPage> {
                               );
                             }
 
+                            // 3. Lista de participantes
                             return Column(
                               children: participantsInfo.map((participant) {
-                                final isOrganizer = participant['uid'] == creatorId;
+                                final uid = participant['uid'];
+                                final isOrganizer = uid == creatorId;
                                 final displayName = participant['displayName'] ?? 'Usuario';
                                 final photoURL = participant['photoURL'];
-                                final initial = displayName.isNotEmpty 
-                                    ? displayName[0].toUpperCase() 
+                                final initial = displayName.isNotEmpty
+                                    ? displayName[0].toUpperCase()
                                     : 'U';
 
                                 return Card(
                                   margin: const EdgeInsets.only(bottom: 8),
                                   elevation: 1,
-                                  child: ListTile(
-                                    leading: CircleAvatar(
-                                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                                      backgroundImage: photoURL != null && photoURL.isNotEmpty
-                                          ? NetworkImage(photoURL)
-                                          : null,
-                                      child: photoURL == null || photoURL.isEmpty
-                                          ? Text(
-                                              initial,
-                                              style: TextStyle(
-                                                color: Theme.of(context).colorScheme.onPrimaryContainer,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            )
-                                          : null,
-                                    ),
-                                    title: Text(displayName),
-                                    trailing: isOrganizer
-                                        ? Chip(
-                                            label: const Text('Organizador'),
-                                            backgroundColor: Colors.amber[100],
-                                            labelStyle: const TextStyle(fontSize: 11),
+                                  child: InkWell( // <-- NUEVO: Permite hacer clic
+                                    borderRadius: BorderRadius.circular(12), // Ajusta al borde de la card por defecto
+                                    onTap: () {
+                                      // NAVEGAR AL PERFIL
+                                      Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                              builder: (_) => UserProfilePage(
+                                                  targetUserId: uid,
+                                                  userName: displayName
+                                              )
                                           )
-                                        : Icon(Icons.check_circle, 
-                                            color: Colors.green[400],
-                                            size: 20,
+                                      );
+                                    },
+                                    child: ListTile(
+                                      leading: CircleAvatar(
+                                        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                                        backgroundImage: photoURL != null && photoURL.isNotEmpty
+                                            ? NetworkImage(photoURL)
+                                            : null,
+                                        child: photoURL == null || photoURL.isEmpty
+                                            ? Text(
+                                          initial,
+                                          style: TextStyle(
+                                            color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                            fontWeight: FontWeight.bold,
                                           ),
+                                        )
+                                            : null,
+                                      ),
+                                      title: Text(displayName),
+                                      trailing: isOrganizer
+                                          ? Chip(
+                                        label: const Text('Organizador'),
+                                        backgroundColor: Colors.amber[100],
+                                        labelStyle: const TextStyle(fontSize: 11),
+                                      )
+                                          : Icon(
+                                        Icons.chevron_right, // Icono visual para indicar navegación
+                                        color: Colors.grey[400],
+                                        size: 20,
+                                      ),
+                                    ),
                                   ),
                                 );
                               }).toList(),
