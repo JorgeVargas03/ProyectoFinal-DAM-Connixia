@@ -1016,8 +1016,21 @@ class _HomePageState extends State<HomePage> {
     final markers = <Marker>{};
     final myUid = FirebaseAuth.instance.currentUser?.uid;
 
+    final twelveHoursAgo = DateTime.now().subtract(const Duration(hours: 12));
+
     for (var doc in events) {
       final data = doc.data() as Map<String, dynamic>;
+
+      final Timestamp? eventTimestamp = data['date'];
+
+      if (eventTimestamp != null) {
+        final eventDate = eventTimestamp.toDate();
+
+        if (eventDate.isBefore(twelveHoursAgo)) {
+          continue;
+        }
+      }
+
       final lat = data['location']?['lat'] as double?;
       final lng = data['location']?['lng'] as double?;
       final title = data['title'] ?? 'Evento';
