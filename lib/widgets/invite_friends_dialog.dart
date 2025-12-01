@@ -22,8 +22,6 @@ class InviteFriendsDialog extends StatefulWidget {
 class _InviteFriendsDialogState extends State<InviteFriendsDialog> {
   final _notificationService = NotificationService();
   final _currentUser = FirebaseAuth.instance.currentUser;
-
-  // Para controlar visualmente a quiénes acabamos de invitar
   final Set<String> _justInvited = {};
 
   @override
@@ -35,86 +33,128 @@ class _InviteFriendsDialogState extends State<InviteFriendsDialog> {
       title: const Text('Invitar amigos'),
       content: SizedBox(
         width: double.maxFinite,
-        // CORRECCIÓN 1: Escuchamos el DOCUMENTO del usuario, no una colección
-        child: StreamBuilder<DocumentSnapshot>(
+        child: StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
               .collection('users')
               .doc(myUid)
+              .collection('contacts')
               .snapshots(),
           builder: (context, snapshot) {
+            // 1. Estado de carga
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
 
-            if (!snapshot.hasData || !snapshot.data!.exists) {
-              return const Text('Error al cargar contactos.');
-            }
-
-            // CORRECCIÓN 2: Extraemos el array 'contacts' del mapa de datos
-            final userData = snapshot.data!.data() as Map<String, dynamic>;
-            final List<dynamic> contactsList = userData['contacts'] ?? [];
-
-            if (contactsList.isEmpty) {
-              return const Text(
-                'No tienes contactos agregados aún.\nVe a "Mis Contactos" para buscar amigos.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey),
+            // 2. Error
+            if (snapshot.hasError) {
+              return Center(
+                child: Text('Error: ${snapshot.error}'),
               );
             }
 
-            // CORRECCIÓN 3: Iteramos sobre la lista del array
-            return ListView.builder(
-              shrinkWrap: true,
-              itemCount: contactsList.length,
-              itemBuilder: (context, index) {
-                // Cada elemento del array es un mapa: {uid: '...', isFavorite: ...}
-                final contactMap = contactsList[index] as Map<String, dynamic>;
-                final friendUid = contactMap['uid'];
+            // 3. Sin contactos
+            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.people_outline, size: 64, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text(
+                        'No tienes contactos',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Agrega amigos desde la pantalla de contactos',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
 
-                // Filtro 1: Ya está en el evento?
-                if (widget.currentParticipants.contains(friendUid)) {
-                  return const SizedBox.shrink();
+            // 4. Obtener IDs de contactos
+            final contactIds = snapshot.data!.docs.map((doc) => doc.id).toList();
+
+            // 5. Filtrar contactos que NO están en el evento
+            final availableContactIds = contactIds
+                .where((id) => !widget.currentParticipants.contains(id))
+                .toList();
+
+            // 6. Si todos los contactos ya están en el evento
+            if (availableContactIds.isEmpty) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check_circle, size: 64, color: Colors.green),
+                      SizedBox(height: 16),
+                      Text(
+                        'Todos tus contactos ya están en el evento',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 16),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            // 7. Cargar información de los contactos disponibles
+            return FutureBuilder<List<Map<String, dynamic>>>(
+              future: _loadContactsInfo(availableContactIds),
+              builder: (context, contactsSnapshot) {
+                if (contactsSnapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
                 }
 
-                // Recuperamos nombre/foto real del usuario usando su UID
-                return FutureBuilder<DocumentSnapshot>(
-                  future: FirebaseFirestore.instance.collection('users').doc(friendUid).get(),
-                  builder: (context, userSnap) {
-                    // Mientras carga la info del amigo
-                    if (!userSnap.hasData) return const SizedBox();
+                if (contactsSnapshot.hasError) {
+                  return Center(
+                    child: Text('Error al cargar contactos: ${contactsSnapshot.error}'),
+                  );
+                }
 
-                    // Si el amigo borró su cuenta
-                    if (!userSnap.data!.exists) return const SizedBox();
+                final contacts = contactsSnapshot.data ?? [];
 
-                    final user = userSnap.data!.data() as Map<String, dynamic>;
-                    final name = user['displayName'] ?? 'Usuario';
-                    final photoURL = user['photoURL'];
+                if (contacts.isEmpty) {
+                  return const Center(
+                    child: Text('No se pudieron cargar los contactos'),
+                  );
+                }
 
-                    final isInvited = _justInvited.contains(friendUid);
+                return ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: contacts.length,
+                  itemBuilder: (context, index) {
+                    final contact = contacts[index];
+                    final userId = contact['id'] as String;
+                    final userName = contact['name'] as String;
+                    final userPhoto = contact['photoURL'] as String?;
+                    final isInvited = _justInvited.contains(userId);
 
                     return ListTile(
                       leading: CircleAvatar(
-                        backgroundImage: photoURL != null && photoURL.isNotEmpty
-                            ? NetworkImage(photoURL)
+                        backgroundImage: userPhoto != null && userPhoto.isNotEmpty
+                            ? NetworkImage(userPhoto)
                             : null,
-                        child: (photoURL == null || photoURL.isEmpty)
-                            ? Text(name.isNotEmpty ? name[0].toUpperCase() : '?')
+                        child: userPhoto == null || userPhoto.isEmpty
+                            ? Text(userName[0].toUpperCase())
                             : null,
                       ),
-                      title: Text(name),
+                      title: Text(userName),
                       trailing: isInvited
-                          ? const Icon(Icons.check_circle, color: Colors.green)
-                          : ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                          elevation: 0,
-                        ),
-                        onPressed: () async {
-                          await _inviteUser(friendUid, name);
-                        },
-                        child: const Text('Invitar'),
-                      ),
+                          ? const Icon(Icons.check, color: Colors.green)
+                          : const Icon(Icons.person_add),
+                      onTap: isInvited
+                          ? null
+                          : () => _inviteUser(userId, userName),
                     );
                   },
                 );
@@ -127,25 +167,72 @@ class _InviteFriendsDialogState extends State<InviteFriendsDialog> {
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: const Text('Cerrar'),
-        )
+        ),
       ],
     );
+  }
+
+  // ✅ Método para cargar información de los contactos
+  Future<List<Map<String, dynamic>>> _loadContactsInfo(List<String> contactIds) async {
+    final contacts = <Map<String, dynamic>>[];
+
+    for (final id in contactIds) {
+      try {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(id)
+            .get();
+
+        if (userDoc.exists) {
+          contacts.add({
+            'id': id,
+            'name': userDoc.data()?['displayName'] ?? 'Sin nombre',
+            'photoURL': userDoc.data()?['photoURL'],
+          });
+        }
+      } catch (e) {
+        debugPrint('Error al cargar contacto $id: $e');
+      }
+    }
+
+    return contacts;
   }
 
   Future<void> _inviteUser(String friendUid, String friendName) async {
     setState(() => _justInvited.add(friendUid));
 
-    await _notificationService.sendInvitation(
-      eventId: widget.eventId,
-      eventTitle: widget.eventTitle,
-      targetUserId: friendUid,
-      senderName: _currentUser?.displayName ?? 'Un amigo',
-    );
+    try {
+      // Agregar usuario al evento
+      await FirebaseFirestore.instance
+          .collection('events')
+          .doc(widget.eventId)
+          .update({
+        'participants': FieldValue.arrayUnion([friendUid]),
+      });
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Invitación enviada a $friendName')),
+      // Enviar notificación
+      await _notificationService.sendEventInvitation(
+        recipientId: friendUid,
+        eventId: widget.eventId,
+        eventTitle: widget.eventTitle,
+        invitedBy: _currentUser!.uid,
       );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Invitación enviada a $friendName')),
+        );
+      }
+    } catch (e) {
+      setState(() => _justInvited.remove(friendUid));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al invitar: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 }

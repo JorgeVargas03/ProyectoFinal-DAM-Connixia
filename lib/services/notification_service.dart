@@ -57,6 +57,31 @@ class NotificationService {
     }
   }
 
+  Future<void> sendEventInvitation({
+    required String recipientId,
+    required String eventId,
+    required String eventTitle,
+    required String invitedBy,
+  }) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(recipientId)
+          .collection('notifications')
+          .add({
+        'type': 'event_invitation',
+        'eventId': eventId,
+        'eventTitle': eventTitle,
+        'invitedBy': invitedBy,
+        'timestamp': FieldValue.serverTimestamp(),
+        'read': false,
+      });
+    } catch (e) {
+      debugPrint('Error al enviar notificación de invitación: $e');
+      rethrow;
+    }
+  }
+
   /// Marcar todas las notificaciones como leídas
   Future<void> markAllAsRead() async {
     if (currentUid == null) return;
