@@ -32,6 +32,7 @@ class _ProfilePageState extends State<ProfilePage>
   bool _isChangingPassword = false;
 
   late TabController _tabController;
+  bool _isModalOpen = false;
 
   // Lista de colores :D
   final List<Color> _availableColors = [
@@ -259,11 +260,15 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   void _showImageSourceDialog() {
+    setState(() => _isModalOpen = true);
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
+      isDismissible: true,
+      enableDrag: true,
       builder: (context) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -310,15 +315,23 @@ class _ProfilePageState extends State<ProfilePage>
           ],
         ),
       ),
-    );
+    ).then((_) {
+      if (mounted) {
+        setState(() => _isModalOpen = false);
+        FocusScope.of(context).unfocus();
+      }
+    });
   }
 
   void _showFullImage() {
     if (_user?.photoURL == null || _user!.photoURL!.isEmpty) return;
 
+    setState(() => _isModalOpen = true);
+    
     showDialog(
       context: context,
       barrierColor: Colors.black87,
+      barrierDismissible: true,
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         insetPadding: const EdgeInsets.all(24),
@@ -349,7 +362,12 @@ class _ProfilePageState extends State<ProfilePage>
           ],
         ),
       ),
-    );
+    ).then((_) {
+      if (mounted) {
+        setState(() => _isModalOpen = false);
+        FocusScope.of(context).unfocus();
+      }
+    });
   }
 
   Future<bool> _confirmDeleteDialog() async {
@@ -442,31 +460,40 @@ class _ProfilePageState extends State<ProfilePage>
         ? Color.lerp(primaryColor, Colors.white, 0.4)!
         : Color.lerp(primaryColor, Colors.black, 0.2)!;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mi cuenta'),
-        elevation: 0,
-        bottom: TabBar(
+    return GestureDetector(
+      onTap: () {
+        //Solo ocultar el teclado si NO hay un modal abierto
+        if (!_isModalOpen) {
+          FocusScope.of(context).unfocus();
+        }},
+      behavior: HitTestBehavior.opaque,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Mi cuenta'),
+          elevation: 0,
+          bottom: TabBar(
+            controller: _tabController,
+            labelColor: activeColor,
+            indicatorColor: activeColor,
+            unselectedLabelColor: Colors.white.withOpacity(0.7),
+            tabs: const [
+              Tab(icon: Icon(Icons.person), text: 'Perfil'),
+              Tab(icon: Icon(Icons.lock), text: 'Seguridad'),
+              Tab(icon: Icon(Icons.palette), text: 'Apariencia'),
+            ],
+          ),
+        ),
+        body: TabBarView(
           controller: _tabController,
-          labelColor: activeColor,
-          indicatorColor: activeColor,
-          unselectedLabelColor: Colors.white.withOpacity(0.7),
-          tabs: const [
-            Tab(icon: Icon(Icons.person), text: 'Perfil'),
-            Tab(icon: Icon(Icons.lock), text: 'Seguridad'),
-            Tab(icon: Icon(Icons.palette), text: 'Apariencia'),
+          children: [
+            _buildProfileTab(hasPhoto, theme),
+            _buildSecurityTab(theme),
+            _buildAppearanceTab(theme),
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildProfileTab(hasPhoto, theme),
-          _buildSecurityTab(theme),
-          _buildAppearanceTab(theme),
-        ],
-      ),
     );
+
   }
 
   Widget _buildProfileTab(bool hasPhoto, ThemeData theme) {
@@ -672,7 +699,9 @@ class _ProfilePageState extends State<ProfilePage>
                 ],
               ),
               const SizedBox(height: 16),
-              TextFormField(
+              IgnorePointer(
+                ignoring: _isModalOpen,
+                child: TextFormField(
                 controller: _displayNameCtrl,
                 decoration: InputDecoration(
                   labelText: 'Nombre visible',
@@ -684,6 +713,7 @@ class _ProfilePageState extends State<ProfilePage>
                 validator: (v) => (v == null || v.trim().isEmpty)
                     ? 'Ingresa un nombre'
                     : null,
+              ),
               ),
               const SizedBox(height: 16),
               SizedBox(
