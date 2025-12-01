@@ -406,17 +406,50 @@ class _HomePageState extends State<HomePage> {
                   padding: const EdgeInsets.all(20),
                   child: Row(
                     children: [
-                      CircleAvatar(
-                        radius: 30,
-                        backgroundColor: colorScheme.primaryContainer,
-                        child: Text(
-                          _userInitial(),
-                          style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: colorScheme.onPrimaryContainer
-                          ),
-                        ),
+                      StreamBuilder<User?>(
+                        stream: FirebaseAuth.instance.userChanges(),
+                        builder: (context, authSnapshot) {
+                          final u = authSnapshot.data;
+                          if (u == null) {
+                            return CircleAvatar(
+                              radius: 30,
+                              backgroundColor: colorScheme.primaryContainer,
+                              child: Icon(Icons.person, color: colorScheme.onPrimaryContainer),
+                            );
+                          }
+
+                          return FutureBuilder<DocumentSnapshot>(
+                            future: FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(u.uid)
+                                .get(),
+                            builder: (context, firestoreSnapshot) {
+                              String? photoUrl;
+                              if (firestoreSnapshot.hasData && firestoreSnapshot.data!.exists) {
+                                final data = firestoreSnapshot.data!.data() as Map<String, dynamic>;
+                                photoUrl = data['photoURL'];
+                              }
+
+                              final hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
+
+                              return CircleAvatar(
+                                radius: 30,
+                                backgroundColor: colorScheme.primaryContainer,
+                                backgroundImage: hasPhoto ? NetworkImage(photoUrl) : null,
+                                child: hasPhoto
+                                    ? null
+                                    : Text(
+                                        _userInitial(),
+                                        style: TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          color: colorScheme.onPrimaryContainer,
+                                        ),
+                                      ),
+                              );
+                            },
+                          );
+                        },
                       ),
                       const SizedBox(width: 16),
                       Expanded(
