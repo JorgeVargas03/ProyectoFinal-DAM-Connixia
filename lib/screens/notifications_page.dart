@@ -88,8 +88,15 @@ class _NotificationsPageState extends State<NotificationsPage> {
               final notificationId = doc.id;
 
               final isRead = data['read'] ?? false;
-              final message = data['message'] ?? 'Nueva notificación';
               final type = data['type'] ?? 'unknown';
+              String message = data['message'] ?? 'Nueva notificación';
+
+              if (type == 'attendance_confirmed') {
+                final eventTitle = data['eventTitle'] ?? 'un evento';
+                final userName = data['senderName'] ?? 'Un usuario';
+                final confirmedAt = data['confirmedAt'] as Timestamp?;
+                message = '$userName confirmó su llegada a "$eventTitle"';
+              }
               final status = data['status'] ?? 'pending';
               final eventId = data['eventId'];
 
@@ -242,6 +249,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
         return Icons.event;
       case 'event_reminder':
         return Icons.alarm;
+        case 'attendance_confirmed':
+        return Icons.check_circle;
       default:
         return Icons.notifications;
     }
