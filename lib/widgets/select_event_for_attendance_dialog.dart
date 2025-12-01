@@ -131,7 +131,7 @@ class SelectEventForAttendanceDialog extends StatelessWidget {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.of(context, rootNavigator: false).pop(),
           child: const Text('Cancelar'),
         ),
       ],
@@ -147,12 +147,13 @@ class SelectEventForAttendanceDialog extends StatelessWidget {
     // Confirmar acción
     final confirm = await showDialog<bool>(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         title: const Text('Confirmar llegada'),
         content: Text('¿Confirmas que llegaste a "$eventTitle"?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
+            onPressed: () => Navigator.of(ctx).pop(false),
             child: const Text('Cancelar'),
           ),
           ElevatedButton(
@@ -219,7 +220,7 @@ class SelectEventForAttendanceDialog extends StatelessWidget {
 
       //5. Cerrar diálogo y mostrar confirmación visual
       if (context.mounted) {
-        Navigator.pop(context); // Cerrar diálogo de selección
+        Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('¡Llegada confirmada a "$eventTitle"!'),

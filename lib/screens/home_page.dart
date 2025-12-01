@@ -57,11 +57,15 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _onArrivedShake() async {
     if (_postingArrival) return;
-    _postingArrival = true;
-    showDialog(
+    setState(() => _postingArrival = true);
+    await showDialog(
       context: context,
+      barrierDismissible: false,  // Evita cerrar tocando fuera
       builder: (_) => const SelectEventForAttendanceDialog(),
     );
+    if (mounted) {
+      setState(() => _postingArrival = false);
+    }
   }
 
   @override
