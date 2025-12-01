@@ -9,6 +9,7 @@ import 'dart:io';
 import '../controllers/auth_controller.dart';
 import '../services/image_upload_service.dart';
 import '../providers/theme_provider.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -25,6 +26,7 @@ class _ProfilePageState extends State<ProfilePage>
   final _newPassCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   final ImagePicker _picker = ImagePicker();
+  static const int _maxFileSizeBytes = 10 * 1024 * 1024;
 
   User? _user;
   bool _isUpdatingImage = false;
@@ -182,17 +184,23 @@ class _ProfilePageState extends State<ProfilePage>
       if (pickedFile == null) return;
 
       final imageFile = File(pickedFile.path);
+      
+      // 1. Recortar
       final croppedImage = await _cropImage(imageFile);
       if (croppedImage == null) return;
 
-      final confirmed = await _showPreviewDialog(croppedImage);
+      // 2. Comprimir SOLO si excede 10 MB
+      final finalImage = await _compressIfNeeded(croppedImage);
+
+      // 3. Mostrar preview
+      final confirmed = await _showPreviewDialog(finalImage);
       if (!confirmed) return;
 
       setState(() => _isUpdatingImage = true);
 
       final filename = 'profile_${_user!.uid}';
       final result = await ImageUploadService.uploadProfileImage(
-        croppedImage,
+        finalImage,
         filename,
       );
 
@@ -213,6 +221,87 @@ class _ProfilePageState extends State<ProfilePage>
       _showSnackBar('Error: $e', isError: true);
     } finally {
       setState(() => _isUpdatingImage = false);
+    }
+  }
+
+  /// Comprime la imagen SOLO si excede el límite de Cloudinary
+  Future<File> _compressIfNeeded(File imageFile) async {
+    try {
+      final fileSize = await imageFile.length();
+      final fileSizeMB = fileSize / (1024 * 1024);
+      
+      debugPrint('📸 Tamaño original: ${fileSizeMB.toStringAsFixed(2)} MB');
+
+      // Si el archivo es menor a 10 MB, retornarlo sin comprimir
+      if (fileSize <= _maxFileSizeBytes) {
+        debugPrint('✅ Imagen dentro del límite, no se comprime');
+        return imageFile;
+      }
+
+      debugPrint('⚠️ Imagen excede 10 MB, comprimiendo...');
+
+      // Comprimir la imagen
+      final filePath = imageFile.absolute.path;
+      final lastIndex = filePath.lastIndexOf('.');
+      final outPath = '${filePath.substring(0, lastIndex)}_compressed.jpg';
+
+      final result = await FlutterImageCompress.compressAndGetFile(
+        imageFile.absolute.path,
+        outPath,
+        quality: 75, // Calidad balanceada
+        minWidth: 1200, // Suficiente para fotos de perfil
+        minHeight: 1200,
+        format: CompressFormat.jpeg,
+      );
+
+      if (result == null) {
+        debugPrint('❌ Error al comprimir, usando imagen original');
+        return imageFile;
+      }
+
+      final compressedSize = await result.length();
+      final compressedSizeMB = compressedSize / (1024 * 1024);
+      debugPrint('✅ Comprimida: ${compressedSizeMB.toStringAsFixed(2)} MB');
+
+      // Si después de comprimir sigue siendo muy grande, comprimir más agresivamente
+      if (compressedSize > _maxFileSizeBytes) {
+        debugPrint('⚠️ Aún es grande, comprimiendo más...');
+        return await _compressAggressively(File(result.path));
+      }
+
+      return File(result.path);
+    } catch (e) {
+      debugPrint('❌ Error en compresión: $e');
+      return imageFile; // Retornar original si hay error
+    }
+  }
+
+  /// Compresión más agresiva para archivos muy grandes
+  Future<File> _compressAggressively(File imageFile) async {
+    try {
+      final filePath = imageFile.absolute.path;
+      final lastIndex = filePath.lastIndexOf('.');
+      final outPath = '${filePath.substring(0, lastIndex)}_ultra.jpg';
+
+      final result = await FlutterImageCompress.compressAndGetFile(
+        imageFile.absolute.path,
+        outPath,
+        quality: 60, // Calidad más baja
+        minWidth: 800, // Dimensiones más pequeñas
+        minHeight: 800,
+        format: CompressFormat.jpeg,
+      );
+
+      if (result != null) {
+        final finalSize = await result.length();
+        debugPrint('✅ Compresión agresiva: ${(finalSize / (1024 * 1024)).toStringAsFixed(2)} MB');
+        return File(result.path);
+      }
+
+      return imageFile;
+    } catch (e) {
+      debugPrint('❌ Error en compresión agresiva: $e');
+      return imageFile;
     }
   }
 
