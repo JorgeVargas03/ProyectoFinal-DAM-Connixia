@@ -192,18 +192,27 @@ class SelectEventForAttendanceDialog extends StatelessWidget {
 
       final creatorId = eventDoc.data()?['creatorId'];
 
-      //4. Notificación al ORGANIZADOR (ya existía)
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+
+      final userName = userDoc.data()?['displayName'] ?? 'Un usuario';
+
+      //4. Notificación al ORGANIZADOR
       if (creatorId != null && creatorId != userId) {
         await FirebaseFirestore.instance
-            .collection('users')
-            .doc(creatorId)
             .collection('notifications')
             .add({
           'type': 'attendance_confirmed',
           'eventId': eventId,
           'eventTitle': eventTitle,
+          'recipientId': creatorId,
+          'senderId': userId,
+          'message': '$userName ha confirmado su llegada a "$eventTitle"',
           'userId': userId,
-          'timestamp': FieldValue.serverTimestamp(),
+          'senderName': userName,
+          'createdAt': FieldValue.serverTimestamp(),
           'read': false,
         });
       }
@@ -228,6 +237,7 @@ class SelectEventForAttendanceDialog extends StatelessWidget {
         );
       }
     }
+
   }
 
 }
