@@ -29,6 +29,17 @@ class _EventDetailPageState extends State<EventDetailPage> {
     return DateFormat('EEEE d, MMMM yyyy - HH:mm', 'es').format(timestamp.toDate());
   }
 
+  String _formatTimeAgo(Timestamp timestamp) {
+    final now = DateTime.now();
+    final date = timestamp.toDate();
+    final diff = now.difference(date);
+
+    if (diff.inMinutes < 1) return 'hace un momento';
+    if (diff.inMinutes < 60) return 'hace ${diff.inMinutes} min';
+    if (diff.inHours < 24) return 'hace ${diff.inHours}h';
+    return 'el ${DateFormat('dd/MM').format(date)}';
+  }
+
   @override
   void dispose() {
     _mapController?.dispose();
@@ -182,92 +193,144 @@ class _EventDetailPageState extends State<EventDetailPage> {
                         
                         // Lista de participantes con fotos
                         // Lista de participantes con fotos
-                        FutureBuilder<List<Map<String, dynamic>>>(
-                          future: _eventCtrl.getParticipantsInfo(participants.cast<String>()),
-                          builder: (context, participantsSnapshot) {
-                            // 1. Estado de carga
-                            if (participantsSnapshot.connectionState == ConnectionState.waiting) {
-                              return const Center(
-                                child: Padding(
-                                  padding: EdgeInsets.all(20),
-                                  child: CircularProgressIndicator(),
-                                ),
-                              );
+                        // Lista de participantes con confirmación de llegada
+                        StreamBuilder<QuerySnapshot>(
+                          stream: FirebaseFirestore.instance
+                              .collection('events')
+                              .doc(widget.eventId)
+                              .collection('attendance')
+                              .snapshots(),
+                          builder: (context, attendanceSnapshot) {
+                            // Mapa de userId -> datos de asistencia
+                            final attendanceMap = <String, Map<String, dynamic>>{};
+
+                            if (attendanceSnapshot.hasData) {
+                              for (final doc in attendanceSnapshot.data!.docs) {
+                                attendanceMap[doc.id] = doc.data() as Map<String, dynamic>;
+                              }
                             }
 
-                            final participantsInfo = participantsSnapshot.data ?? [];
-
-                            // 2. Estado vacío o error
-                            if (participantsInfo.isEmpty) {
-                              return Text(
-                                'No se pudo cargar la información de los participantes',
-                                style: TextStyle(color: Colors.grey[600]),
-                              );
-                            }
-
-                            // 3. Lista de participantes
-                            return Column(
-                              children: participantsInfo.map((participant) {
-                                final uid = participant['uid'];
-                                final isOrganizer = uid == creatorId;
-                                final displayName = participant['displayName'] ?? 'Usuario';
-                                final photoURL = participant['photoURL'];
-                                final initial = displayName.isNotEmpty
-                                    ? displayName[0].toUpperCase()
-                                    : 'U';
-
-                                return Card(
-                                  margin: const EdgeInsets.only(bottom: 8),
-                                  elevation: 1,
-                                  child: InkWell( // <-- NUEVO: Permite hacer clic
-                                    borderRadius: BorderRadius.circular(12), // Ajusta al borde de la card por defecto
-                                    onTap: () {
-                                      // NAVEGAR AL PERFIL
-                                      Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                              builder: (_) => UserProfilePage(
-                                                  targetUserId: uid,
-                                                  userName: displayName
-                                              )
-                                          )
-                                      );
-                                    },
-                                    child: ListTile(
-                                      leading: CircleAvatar(
-                                        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                                        backgroundImage: photoURL != null && photoURL.isNotEmpty
-                                            ? NetworkImage(photoURL)
-                                            : null,
-                                        child: photoURL == null || photoURL.isEmpty
-                                            ? Text(
-                                          initial,
-                                          style: TextStyle(
-                                            color: Theme.of(context).colorScheme.onPrimaryContainer,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        )
-                                            : null,
-                                      ),
-                                      title: Text(displayName),
-                                      trailing: isOrganizer
-                                          ? Chip(
-                                        label: const Text('Organizador'),
-                                        backgroundColor: Colors.amber[100],
-                                        labelStyle: const TextStyle(fontSize: 11),
-                                      )
-                                          : Icon(
-                                        Icons.chevron_right, // Icono visual para indicar navegación
-                                        color: Colors.grey[400],
-                                        size: 20,
-                                      ),
+                            return FutureBuilder<List<Map<String, dynamic>>>(
+                              future: _eventCtrl.getParticipantsInfo(participants.cast<String>()),
+                              builder: (context, participantsSnapshot) {
+                                if (participantsSnapshot.connectionState == ConnectionState.waiting) {
+                                  return const Center(
+                                    child: Padding(
+                                      padding: EdgeInsets.all(20),
+                                      child: CircularProgressIndicator(),
                                     ),
-                                  ),
+                                  );
+                                }
+
+                                final participantsInfo = participantsSnapshot.data ?? [];
+
+                                if (participantsInfo.isEmpty) {
+                                  return Text(
+                                    'No se pudo cargar la información de los participantes',
+                                    style: TextStyle(color: Colors.grey[600]),
+                                  );
+                                }
+
+                                return Column(
+                                  children: participantsInfo.map((participant) {
+                                    final uid = participant['uid'];
+                                    final isOrganizer = uid == creatorId;
+                                    final displayName = participant['displayName'] ?? 'Usuario';
+                                    final photoURL = participant['photoURL'];
+                                    final initial = displayName.isNotEmpty
+                                        ? displayName[0].toUpperCase()
+                                        : 'U';
+
+                                    // Datos de asistencia
+                                    final attendance = attendanceMap[uid];
+                                    final hasConfirmed = attendance?['status'] == 'confirmed';
+                                    final confirmedAt = attendance?['confirmedAt'] as Timestamp?;
+
+                                    return Card(
+                                      margin: const EdgeInsets.only(bottom: 8),
+                                      elevation: 1,
+                                      child: InkWell(
+                                        borderRadius: BorderRadius.circular(12),
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => UserProfilePage(
+                                                targetUserId: uid,
+                                                userName: displayName,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        child: ListTile(
+                                          leading: Stack(
+                                            children: [
+                                              CircleAvatar(
+                                                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                                                backgroundImage: photoURL != null && photoURL.isNotEmpty
+                                                    ? NetworkImage(photoURL)
+                                                    : null,
+                                                child: photoURL == null || photoURL.isEmpty
+                                                    ? Text(
+                                                  initial,
+                                                  style: TextStyle(
+                                                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                )
+                                                    : null,
+                                              ),
+                                              // Badge de confirmación
+                                              if (hasConfirmed)
+                                                Positioned(
+                                                  right: 0,
+                                                  bottom: 0,
+                                                  child: Container(
+                                                    padding: const EdgeInsets.all(2),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.green,
+                                                      shape: BoxShape.circle,
+                                                      border: Border.all(color: Colors.white, width: 2),
+                                                    ),
+                                                    child: const Icon(
+                                                      Icons.check,
+                                                      size: 12,
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                          title: Text(displayName),
+                                          subtitle: hasConfirmed && confirmedAt != null
+                                              ? Text(
+                                            'Llegó ${_formatTimeAgo(confirmedAt)}',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.green[700],
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          )
+                                              : null,
+                                          trailing: isOrganizer
+                                              ? Chip(
+                                            label: const Text('Organizador'),
+                                            backgroundColor: Colors.amber[100],
+                                            labelStyle: const TextStyle(fontSize: 11),
+                                          )
+                                              : hasConfirmed
+                                              ? const Icon(Icons.check_circle, color: Colors.green, size: 24)
+                                              : Icon(Icons.schedule, color: Colors.grey[400], size: 20),
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
                                 );
-                              }).toList(),
+                              },
                             );
                           },
                         ),
+
 
                         const SizedBox(height: 40),
 
