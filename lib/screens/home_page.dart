@@ -16,6 +16,7 @@ import 'explore_events_page.dart';
 import 'event_detail_page.dart';
 import 'notifications_page.dart';
 import 'contacts_page.dart';
+import '../widgets/select_event_for_attendance_dialog.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -57,27 +58,10 @@ class _HomePageState extends State<HomePage> {
   Future<void> _onArrivedShake() async {
     if (_postingArrival) return;
     _postingArrival = true;
-    try {
-      final uid = FirebaseAuth.instance.currentUser!.uid;
-      const eventId = 'demo-event';
-      await FirebaseFirestore.instance
-          .collection('events')
-          .doc(eventId)
-          .collection('arrivals')
-          .doc(uid)
-          .set({
-        'uid': uid,
-        'at': FieldValue.serverTimestamp(),
-        'lat': _myPos?.latitude,
-        'lng': _myPos?.longitude,
-      }, SetOptions(merge: true));
-      await _notifications.showLocal(
-        'Llegada confirmada',
-        'Se notificó tu arribo al evento.',
-      );
-    } finally {
-      _postingArrival = false;
-    }
+    showDialog(
+      context: context,
+      builder: (_) => const SelectEventForAttendanceDialog(),
+    );
   }
 
   @override
