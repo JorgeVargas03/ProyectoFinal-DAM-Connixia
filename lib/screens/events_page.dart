@@ -7,7 +7,8 @@ import 'event_detail_page.dart';
 import 'location_picker_page.dart';
 
 class EventsPage extends StatefulWidget {
-  const EventsPage({super.key});
+  final bool filterCreatedOnly;
+  const EventsPage({super.key, this.filterCreatedOnly = false});
 
   @override
   State<EventsPage> createState() => _EventsPageState();
@@ -16,7 +17,6 @@ class EventsPage extends StatefulWidget {
 class _EventsPageState extends State<EventsPage> {
   final _eventCtrl = EventController();
 
-  // Helper para formatear fechas
   String _formatDate(Timestamp? timestamp) {
     if (timestamp == null) return '--';
     return DateFormat('dd MMM HH:mm', 'es').format(timestamp.toDate());
@@ -28,25 +28,34 @@ class _EventsPageState extends State<EventsPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mis Eventos'),
+        // Título dinámico según el filtro
+        title: Text(widget.filterCreatedOnly ? 'Eventos Creados' : 'Mis Eventos'),
         centerTitle: true,
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: _eventCtrl.getMyEvents(),
         builder: (context, snapshot) {
-          // 1. Estado de Carga
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // 2. Estado de Error
           if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
           }
 
-          final docs = snapshot.data?.docs ?? [];
+          // Obtenemos todos los eventos
+          var docs = snapshot.data?.docs ?? [];
 
-          // 3. Estado Vacío
+          // --- FILTRADO NUEVO ---
+          // Si el filtro está activo, dejamos solo los que yo creé
+          if (widget.filterCreatedOnly && myUid != null) {
+            docs = docs.where((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              return data['creatorId'] == myUid;
+            }).toList();
+          }
+          // ----------------------
+
           if (docs.isEmpty) {
             return Center(
               child: Column(
@@ -55,7 +64,9 @@ class _EventsPageState extends State<EventsPage> {
                   Icon(Icons.event_note, size: 80, color: Colors.grey[300]),
                   const SizedBox(height: 16),
                   Text(
-                    'No tienes eventos activos',
+                    widget.filterCreatedOnly
+                        ? 'No has creado eventos aún'
+                        : 'No tienes eventos activos',
                     style: TextStyle(color: Colors.grey[600], fontSize: 16),
                   ),
                 ],
@@ -63,7 +74,6 @@ class _EventsPageState extends State<EventsPage> {
             );
           }
 
-          // 4. Lista de Eventos
           return ListView.builder(
             padding: const EdgeInsets.all(12),
             itemCount: docs.length,
@@ -72,14 +82,12 @@ class _EventsPageState extends State<EventsPage> {
               final data = doc.data() as Map<String, dynamic>;
               final eventId = doc.id;
 
-              // Datos del evento
               final title = data['title'] ?? 'Sin título';
               final creatorId = data['creatorId'] ?? '';
               final creatorName = data['creatorName'] ?? 'Alguien';
               final date = data['date'] as Timestamp?;
               final address = data['location']?['address'] ?? 'Ubicación desconocida';
 
-              // --- LÓGICA DE PERMISOS ---
               final isCreator = (myUid == creatorId);
 
               return Card(
@@ -127,7 +135,6 @@ class _EventsPageState extends State<EventsPage> {
                       Text(address, maxLines: 1, overflow: TextOverflow.ellipsis),
                     ],
                   ),
-                  // --- BOTÓN DE ACCIÓN SEGÚN ROL ---
                   trailing: isCreator
                       ? IconButton(
                     icon: const Icon(Icons.delete_outline, color: Colors.red),
@@ -140,7 +147,6 @@ class _EventsPageState extends State<EventsPage> {
                     onPressed: () => _confirmLeave(eventId),
                   ),
                   onTap: () {
-                    // Navegamos al detalle pasando el ID del evento
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => EventDetailPage(eventId: eventId),
@@ -161,9 +167,9 @@ class _EventsPageState extends State<EventsPage> {
     );
   }
 
-  // --- DIÁLOGOS DE CONFIRMACIÓN ---
-
+  // ... (El resto de tus métodos _confirmDelete, _confirmLeave y _showCreateEventDialog se mantienen igual)
   Future<void> _confirmDelete(String eventId, String creatorId) async {
+    // ... tu código existente
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -190,6 +196,7 @@ class _EventsPageState extends State<EventsPage> {
   }
 
   Future<void> _confirmLeave(String eventId) async {
+    // ... tu código existente
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -215,14 +222,14 @@ class _EventsPageState extends State<EventsPage> {
     }
   }
 
-  // --- CREACIÓN CON FECHA Y HORA ---
   void _showCreateEventDialog() {
+    // ... tu código existente
     final titleCtrl = TextEditingController();
     final descCtrl = TextEditingController();
 
     // Inicializamos la fecha propuesta (ej. dentro de 2 horas)
     DateTime selectedDate = DateTime.now().add(const Duration(hours: 2));
-    
+
     // Variables para almacenar la ubicación seleccionada
     double? selectedLat;
     double? selectedLng;
@@ -321,9 +328,9 @@ class _EventsPageState extends State<EventsPage> {
                             style: TextStyle(color: Colors.red[700], fontSize: 12),
                           ),
                         ),
-                      
+
                       const SizedBox(height: 20),
-                      
+
                       // --- SELECTOR DE UBICACIÓN ---
                       const Text('¿Dónde?', style: TextStyle(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 8),
@@ -332,7 +339,7 @@ class _EventsPageState extends State<EventsPage> {
                           final result = await Navigator.of(context).push<Map<String, dynamic>>(
                             MaterialPageRoute(builder: (_) => const LocationPickerPage()),
                           );
-                          
+
                           if (result != null) {
                             setStateDialog(() {
                               selectedLat = result['lat'];
@@ -351,9 +358,9 @@ class _EventsPageState extends State<EventsPage> {
                             children: [
                               Icon(
                                 Icons.location_on,
-                                color: selectedLat != null 
-                                  ? Theme.of(context).colorScheme.primary 
-                                  : Colors.grey,
+                                color: selectedLat != null
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Colors.grey,
                               ),
                               const SizedBox(width: 12),
                               Expanded(
@@ -361,13 +368,13 @@ class _EventsPageState extends State<EventsPage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      selectedLat != null 
-                                        ? 'Ubicación seleccionada' 
-                                        : 'Seleccionar ubicación',
+                                      selectedLat != null
+                                          ? 'Ubicación seleccionada'
+                                          : 'Seleccionar ubicación',
                                       style: TextStyle(
-                                        fontWeight: selectedLat != null 
-                                          ? FontWeight.bold 
-                                          : FontWeight.normal,
+                                        fontWeight: selectedLat != null
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
                                       ),
                                     ),
                                     if (selectedLat != null) ...[

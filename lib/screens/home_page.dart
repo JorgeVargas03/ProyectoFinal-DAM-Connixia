@@ -559,7 +559,7 @@ class _HomePageState extends State<HomePage> {
                                             onTap: () {
                                               Navigator.of(context).push(
                                                 MaterialPageRoute(
-                                                  builder: (_) => const EventsPage(),
+                                                    builder: (_) => const EventsPage(filterCreatedOnly: true),
                                                 ),
                                               );
                                             },
@@ -972,7 +972,7 @@ class _HomePageState extends State<HomePage> {
                 child: ListTile(
                   leading: Icon(Icons.notifications, color: colorScheme.primary),
                   title: const Text('Notificaciones'),
-                  subtitle: const Text('Centro próximamente'),
+                  subtitle: const Text('Mantente informado de las últimas noticias'),
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => const NotificationsPage()),
