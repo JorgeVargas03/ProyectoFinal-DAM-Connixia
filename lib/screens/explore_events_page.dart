@@ -68,9 +68,9 @@ class _ExploreEventsPageState extends State<ExploreEventsPage> {
       body: _loadingLocation
           ? const Center(child: CircularProgressIndicator())
           : StreamBuilder<QuerySnapshot>(
-        stream: _eventCtrl.getAllVisibleEvents(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+              stream: _eventCtrl.getAllVisibleEvents(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
@@ -85,16 +85,26 @@ class _ExploreEventsPageState extends State<ExploreEventsPage> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.explore_off, size: 80, color: Colors.grey[300]),
+                        Icon(
+                          Icons.explore_off,
+                          size: 80,
+                          color: Colors.grey[300],
+                        ),
                         const SizedBox(height: 16),
                         Text(
                           'No hay eventos disponibles',
-                          style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 16,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           '¡Sé el primero en crear uno!',
-                          style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                          style: TextStyle(
+                            color: Colors.grey[500],
+                            fontSize: 14,
+                          ),
                         ),
                       ],
                     ),
@@ -103,45 +113,48 @@ class _ExploreEventsPageState extends State<ExploreEventsPage> {
 
                 // Filtrar y ordenar por distancia
                 final now = DateTime.now();
-                final eventsWithDistance = docs.map((doc) {
-                  final data = doc.data() as Map<String, dynamic>;
-                  final lat = data['location']?['lat'] as double?;
-                  final lng = data['location']?['lng'] as double?;
-                  final date = data['date'] as Timestamp?;
+                final eventsWithDistance = docs
+                    .map((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      final lat = data['location']?['lat'] as double?;
+                      final lng = data['location']?['lng'] as double?;
+                      final date = data['date'] as Timestamp?;
 
-                  double? distance;
-                  if (_myPosition != null && lat != null && lng != null) {
-                    distance = _eventCtrl.calculateDistance(
-                      _myPosition!.latitude,
-                      _myPosition!.longitude,
-                      lat,
-                      lng,
-                    );
-                  }
+                      double? distance;
+                      if (_myPosition != null && lat != null && lng != null) {
+                        distance = _eventCtrl.calculateDistance(
+                          _myPosition!.latitude,
+                          _myPosition!.longitude,
+                          lat,
+                          lng,
+                        );
+                      }
 
-                  return {
-                    'doc': doc,
-                    'data': data,
-                    'distance': distance,
-                    'date': date,
-                  };
-                }).where((item) {
-                  // Filtro 1: Excluir eventos pasados
-                  final date = item['date'] as Timestamp?;
-                  if (date != null && date.toDate().isBefore(now)) {
-                    return false;
-                  }
+                      return {
+                        'doc': doc,
+                        'data': data,
+                        'distance': distance,
+                        'date': date,
+                      };
+                    })
+                    .where((item) {
+                      // Filtro 1: Excluir eventos pasados
+                      final date = item['date'] as Timestamp?;
+                      if (date != null && date.toDate().isBefore(now)) {
+                        return false;
+                      }
 
-                  // Filtro 2: Aplicar filtro de distancia si está activo
-                  if (_maxDistance != null) {
-                    final distance = item['distance'] as double?;
-                    if (distance == null || distance > _maxDistance!) {
-                      return false;
-                    }
-                  }
+                      // Filtro 2: Aplicar filtro de distancia si está activo
+                      if (_maxDistance != null) {
+                        final distance = item['distance'] as double?;
+                        if (distance == null || distance > _maxDistance!) {
+                          return false;
+                        }
+                      }
 
-                  return true;
-                }).toList();
+                      return true;
+                    })
+                    .toList();
 
                 // Ordenar por distancia (más cerca primero)
                 eventsWithDistance.sort((a, b) {
@@ -166,12 +179,18 @@ class _ExploreEventsPageState extends State<ExploreEventsPage> {
                     final creatorId = data['creatorId'] ?? '';
                     final creatorName = data['creatorName'] ?? 'Alguien';
                     final date = data['date'] as Timestamp?;
-                    final address = data['location']?['address'] ?? 'Ubicación desconocida';
+                    final address =
+                        data['location']?['address'] ?? 'Ubicación desconocida';
                     final participants = List.from(data['participants'] ?? []);
+                    final maxParticipants = data['maxParticipants'] as int?;
 
                     final isMyEvent = (myUid == creatorId);
                     final isAlreadyJoined = participants.contains(myUid);
-                    final isTooFar = distance != null && distance > 100; // Más de 100km
+                    final isTooFar =
+                        distance != null && distance > 100; // Más de 100km
+                    final isFull =
+                        maxParticipants != null &&
+                        participants.length >= maxParticipants;
 
                     return Card(
                       elevation: 3,
@@ -218,7 +237,11 @@ class _ExploreEventsPageState extends State<ExploreEventsPage> {
                               // Fecha y hora
                               Row(
                                 children: [
-                                  Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
+                                  Icon(
+                                    Icons.calendar_today,
+                                    size: 16,
+                                    color: Colors.grey[600],
+                                  ),
                                   const SizedBox(width: 6),
                                   Text(
                                     _formatDate(date),
@@ -232,20 +255,31 @@ class _ExploreEventsPageState extends State<ExploreEventsPage> {
                               if (distance != null)
                                 Row(
                                   children: [
-                                    Icon(Icons.navigation, size: 16, color: Colors.grey[600]),
+                                    Icon(
+                                      Icons.navigation,
+                                      size: 16,
+                                      color: Colors.grey[600],
+                                    ),
                                     const SizedBox(width: 6),
                                     Text(
                                       _formatDistance(distance),
                                       style: TextStyle(
-                                        color: isTooFar ? Colors.orange : Colors.grey[700],
-                                        fontWeight: isTooFar ? FontWeight.bold : FontWeight.normal,
+                                        color: isTooFar
+                                            ? Colors.orange
+                                            : Colors.grey[700],
+                                        fontWeight: isTooFar
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
                                       ),
                                     ),
                                     if (isTooFar) ...[
                                       const SizedBox(width: 4),
                                       Text(
                                         '(Muy lejos)',
-                                        style: TextStyle(color: Colors.orange[700], fontSize: 12),
+                                        style: TextStyle(
+                                          color: Colors.orange[700],
+                                          fontSize: 12,
+                                        ),
                                       ),
                                     ],
                                   ],
@@ -255,7 +289,11 @@ class _ExploreEventsPageState extends State<ExploreEventsPage> {
                               // Ubicación
                               Row(
                                 children: [
-                                  Icon(Icons.location_on_outlined, size: 16, color: Colors.grey[600]),
+                                  Icon(
+                                    Icons.location_on_outlined,
+                                    size: 16,
+                                    color: Colors.grey[600],
+                                  ),
                                   const SizedBox(width: 6),
                                   Expanded(
                                     child: Text(
@@ -271,7 +309,8 @@ class _ExploreEventsPageState extends State<ExploreEventsPage> {
 
                               // Organizador y participantes
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
                                     'Por: $creatorName',
@@ -283,12 +322,46 @@ class _ExploreEventsPageState extends State<ExploreEventsPage> {
                                   ),
                                   Row(
                                     children: [
-                                      Icon(Icons.people, size: 16, color: Colors.grey[600]),
+                                      Icon(
+                                        Icons.people,
+                                        size: 16,
+                                        color: Colors.grey[600],
+                                      ),
                                       const SizedBox(width: 4),
                                       Text(
-                                        '${participants.length}',
-                                        style: TextStyle(color: Colors.grey[700]),
+                                        '${participants.length}${maxParticipants != null ? '/$maxParticipants' : ''}',
+                                        style: TextStyle(
+                                          color: isFull
+                                              ? Colors.red
+                                              : Colors.grey[700],
+                                          fontWeight: isFull
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                        ),
                                       ),
+                                      if (isFull) ...[
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.red[100],
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'LLENO',
+                                            style: TextStyle(
+                                              color: Colors.red[900],
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 ],
@@ -304,6 +377,7 @@ class _ExploreEventsPageState extends State<ExploreEventsPage> {
                                   isMyEvent,
                                   isAlreadyJoined,
                                   isTooFar,
+                                  isFull,
                                 ),
                               ),
                             ],
@@ -324,15 +398,14 @@ class _ExploreEventsPageState extends State<ExploreEventsPage> {
     bool isMyEvent,
     bool isAlreadyJoined,
     bool isTooFar,
+    bool isFull,
   ) {
     if (isMyEvent) {
       return OutlinedButton.icon(
         onPressed: null, // Deshabilitado
         icon: const Icon(Icons.check_circle),
         label: const Text('Tu evento'),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: Colors.grey,
-        ),
+        style: OutlinedButton.styleFrom(foregroundColor: Colors.grey),
       );
     }
 
@@ -344,6 +417,18 @@ class _ExploreEventsPageState extends State<ExploreEventsPage> {
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.green[100],
           foregroundColor: Colors.green[800],
+        ),
+      );
+    }
+
+    if (isFull) {
+      return ElevatedButton.icon(
+        onPressed: null, // Deshabilitado
+        icon: const Icon(Icons.block),
+        label: const Text('Evento lleno'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.red[100],
+          foregroundColor: Colors.red[800],
         ),
       );
     }

@@ -436,6 +436,7 @@ class _EventsPageState extends State<EventsPage> {
         : 'Sin ubicación';
 
     String selectedPrivacy = 'public';
+    int? selectedMaxParticipants; // null = sin límite
 
     showDialog(
       context: context,
@@ -515,6 +516,85 @@ class _EventsPageState extends State<EventsPage> {
                             selectedPrivacy = value;
                           });
                         }
+                      },
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // --- SELECTOR DE LÍMITE DE PARTICIPANTES ---
+                    const Text(
+                      'Límite de participantes',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<int?>(
+                      value: selectedMaxParticipants,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        prefixIcon: Icon(Icons.people_outline),
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        helperText: 'Limita cuántas personas pueden unirse',
+                        helperMaxLines: 2,
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: null,
+                          child: Text(
+                            'Sin límite',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        DropdownMenuItem(
+                          value: 5,
+                          child: Text(
+                            '5 personas',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        DropdownMenuItem(
+                          value: 10,
+                          child: Text(
+                            '10 personas',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        DropdownMenuItem(
+                          value: 15,
+                          child: Text(
+                            '15 personas',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        DropdownMenuItem(
+                          value: 20,
+                          child: Text(
+                            '20 personas',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        DropdownMenuItem(
+                          value: 30,
+                          child: Text(
+                            '30 personas',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        DropdownMenuItem(
+                          value: 50,
+                          child: Text(
+                            '50 personas',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        setStateDialog(() {
+                          selectedMaxParticipants = value;
+                        });
                       },
                     ),
 
@@ -722,6 +802,7 @@ class _EventsPageState extends State<EventsPage> {
                       lng: selectedLng!,
                       address: selectedAddress,
                       privacy: selectedPrivacy,
+                      maxParticipants: selectedMaxParticipants,
                     );
 
                     if (mounted) {

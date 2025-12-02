@@ -26,7 +26,10 @@ class _EventDetailPageState extends State<EventDetailPage> {
   // Formateador de fecha
   String _formatDate(Timestamp? timestamp) {
     if (timestamp == null) return 'Fecha por definir';
-    return DateFormat('EEEE d, MMMM yyyy - HH:mm', 'es').format(timestamp.toDate());
+    return DateFormat(
+      'EEEE d, MMMM yyyy - HH:mm',
+      'es',
+    ).format(timestamp.toDate());
   }
 
   String _formatTimeAgo(Timestamp timestamp) {
@@ -67,7 +70,9 @@ class _EventDetailPageState extends State<EventDetailPage> {
           if (!snapshot.hasData || !snapshot.data!.exists) {
             return Scaffold(
               appBar: AppBar(title: const Text('Error')),
-              body: const Center(child: Text('El evento ya no existe o fue eliminado')),
+              body: const Center(
+                child: Text('El evento ya no existe o fue eliminado'),
+              ),
             );
           }
 
@@ -80,7 +85,8 @@ class _EventDetailPageState extends State<EventDetailPage> {
           final creatorName = data['creatorName'] ?? 'Desconocido';
           final address = data['location']?['address'] ?? 'Ubicación pendiente';
           final participants = List.from(data['participants'] ?? []);
-          
+          final maxParticipants = data['maxParticipants'] as int?;
+
           // Extraer coordenadas del mapa
           final location = data['location'] as Map<String, dynamic>?;
           final lat = location?['lat'] as double?;
@@ -103,7 +109,18 @@ class _EventDetailPageState extends State<EventDetailPage> {
                     icon: const Icon(Icons.edit),
                     tooltip: 'Editar información',
                     // PASAMOS LA FECHA ACTUAL Y UBICACIÓN AL DIÁLOGO
-                    onPressed: () => _showEditDialog(context, title, description, creatorId, date, lat, lng, address),
+                    onPressed: () => _showEditDialog(
+                      context,
+                      title,
+                      description,
+                      creatorId,
+                      date,
+                      lat,
+                      lng,
+                      address,
+                      maxParticipants,
+                      participants.length,
+                    ),
                   ),
 
                 // Botón compartir (Visual)
@@ -124,30 +141,43 @@ class _EventDetailPageState extends State<EventDetailPage> {
                         // --- SECCIÓN 2: ENCABEZADO ---
                         Text(
                           title,
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: Theme.of(context).textTheme.headlineMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 8),
                         Row(
                           children: [
-                            const Icon(Icons.calendar_month, color: Colors.indigo, size: 20),
+                            const Icon(
+                              Icons.calendar_month,
+                              color: Colors.indigo,
+                              size: 20,
+                            ),
                             const SizedBox(width: 8),
                             Text(
                               _formatDate(date),
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 24),
 
                         // --- SECCIÓN 3: UBICACIÓN TEXTUAL ---
-                        const Text('Ubicación:', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text(
+                          'Ubicación:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         const SizedBox(height: 4),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.location_on_outlined, color: Colors.grey, size: 20),
+                            const Icon(
+                              Icons.location_on_outlined,
+                              color: Colors.grey,
+                              size: 20,
+                            ),
                             const SizedBox(width: 8),
                             Expanded(child: Text(address)),
                           ],
@@ -156,7 +186,10 @@ class _EventDetailPageState extends State<EventDetailPage> {
 
                         // --- SECCIÓN 4: DESCRIPCIÓN ---
                         if (description.isNotEmpty) ...[
-                          const Text('Acerca del evento:', style: TextStyle(fontWeight: FontWeight.bold)),
+                          const Text(
+                            'Acerca del evento:',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                           const SizedBox(height: 8),
                           Text(description),
                           const Divider(height: 40),
@@ -166,8 +199,31 @@ class _EventDetailPageState extends State<EventDetailPage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('Asistentes (${participants.length})',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Asistentes (${participants.length}${maxParticipants != null ? '/$maxParticipants' : ''})',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                                if (maxParticipants != null)
+                                  Text(
+                                    participants.length >= maxParticipants
+                                        ? '¡Evento lleno!'
+                                        : '${maxParticipants - participants.length} lugares disponibles',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color:
+                                          participants.length >= maxParticipants
+                                          ? Colors.red
+                                          : Colors.grey[600],
+                                    ),
+                                  ),
+                              ],
+                            ),
 
                             if (isCreator)
                               IconButton.filledTonal(
@@ -185,7 +241,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                                 tooltip: 'Invitar amigos',
                               )
                             else
-                            // Si no eres creador, mostramos el chip de siempre
+                              // Si no eres creador, mostramos el chip de siempre
                               Chip(
                                 label: const Text('Organizador'),
                                 // ... tus estilos
@@ -193,7 +249,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                           ],
                         ),
                         const SizedBox(height: 16),
-                        
+
                         // Lista de participantes con fotos
                         // Lista de participantes con fotos
                         // Lista de participantes con confirmación de llegada
@@ -205,18 +261,23 @@ class _EventDetailPageState extends State<EventDetailPage> {
                               .snapshots(),
                           builder: (context, attendanceSnapshot) {
                             // Mapa de userId -> datos de asistencia
-                            final attendanceMap = <String, Map<String, dynamic>>{};
+                            final attendanceMap =
+                                <String, Map<String, dynamic>>{};
 
                             if (attendanceSnapshot.hasData) {
                               for (final doc in attendanceSnapshot.data!.docs) {
-                                attendanceMap[doc.id] = doc.data() as Map<String, dynamic>;
+                                attendanceMap[doc.id] =
+                                    doc.data() as Map<String, dynamic>;
                               }
                             }
 
                             return FutureBuilder<List<Map<String, dynamic>>>(
-                              future: _eventCtrl.getParticipantsInfo(participants.cast<String>()),
+                              future: _eventCtrl.getParticipantsInfo(
+                                participants.cast<String>(),
+                              ),
                               builder: (context, participantsSnapshot) {
-                                if (participantsSnapshot.connectionState == ConnectionState.waiting) {
+                                if (participantsSnapshot.connectionState ==
+                                    ConnectionState.waiting) {
                                   return const Center(
                                     child: Padding(
                                       padding: EdgeInsets.all(20),
@@ -225,7 +286,8 @@ class _EventDetailPageState extends State<EventDetailPage> {
                                   );
                                 }
 
-                                final participantsInfo = participantsSnapshot.data ?? [];
+                                final participantsInfo =
+                                    participantsSnapshot.data ?? [];
 
                                 if (participantsInfo.isEmpty) {
                                   return Text(
@@ -238,7 +300,8 @@ class _EventDetailPageState extends State<EventDetailPage> {
                                   children: participantsInfo.map((participant) {
                                     final uid = participant['uid'];
                                     final isOrganizer = uid == creatorId;
-                                    final displayName = participant['displayName'] ?? 'Usuario';
+                                    final displayName =
+                                        participant['displayName'] ?? 'Usuario';
                                     final photoURL = participant['photoURL'];
                                     final initial = displayName.isNotEmpty
                                         ? displayName[0].toUpperCase()
@@ -246,8 +309,11 @@ class _EventDetailPageState extends State<EventDetailPage> {
 
                                     // Datos de asistencia
                                     final attendance = attendanceMap[uid];
-                                    final hasConfirmed = attendance?['status'] == 'confirmed';
-                                    final confirmedAt = attendance?['confirmedAt'] as Timestamp?;
+                                    final hasConfirmed =
+                                        attendance?['status'] == 'confirmed';
+                                    final confirmedAt =
+                                        attendance?['confirmedAt']
+                                            as Timestamp?;
 
                                     return Card(
                                       margin: const EdgeInsets.only(bottom: 8),
@@ -269,18 +335,27 @@ class _EventDetailPageState extends State<EventDetailPage> {
                                           leading: Stack(
                                             children: [
                                               CircleAvatar(
-                                                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                                                backgroundImage: photoURL != null && photoURL.isNotEmpty
+                                                backgroundColor: Theme.of(
+                                                  context,
+                                                ).colorScheme.primaryContainer,
+                                                backgroundImage:
+                                                    photoURL != null &&
+                                                        photoURL.isNotEmpty
                                                     ? NetworkImage(photoURL)
                                                     : null,
-                                                child: photoURL == null || photoURL.isEmpty
+                                                child:
+                                                    photoURL == null ||
+                                                        photoURL.isEmpty
                                                     ? Text(
-                                                  initial,
-                                                  style: TextStyle(
-                                                    color: Theme.of(context).colorScheme.onPrimaryContainer,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                )
+                                                        initial,
+                                                        style: TextStyle(
+                                                          color: Theme.of(context)
+                                                              .colorScheme
+                                                              .onPrimaryContainer,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      )
                                                     : null,
                                               ),
                                               // Badge de confirmación
@@ -289,11 +364,15 @@ class _EventDetailPageState extends State<EventDetailPage> {
                                                   right: 0,
                                                   bottom: 0,
                                                   child: Container(
-                                                    padding: const EdgeInsets.all(2),
+                                                    padding:
+                                                        const EdgeInsets.all(2),
                                                     decoration: BoxDecoration(
                                                       color: Colors.green,
                                                       shape: BoxShape.circle,
-                                                      border: Border.all(color: Colors.white, width: 2),
+                                                      border: Border.all(
+                                                        color: Colors.white,
+                                                        width: 2,
+                                                      ),
                                                     ),
                                                     child: const Icon(
                                                       Icons.check,
@@ -305,25 +384,40 @@ class _EventDetailPageState extends State<EventDetailPage> {
                                             ],
                                           ),
                                           title: Text(displayName),
-                                          subtitle: hasConfirmed && confirmedAt != null
+                                          subtitle:
+                                              hasConfirmed &&
+                                                  confirmedAt != null
                                               ? Text(
-                                            'Llegó ${_formatTimeAgo(confirmedAt)}',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.green[700],
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          )
+                                                  'Llegó ${_formatTimeAgo(confirmedAt)}',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.green[700],
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                )
                                               : null,
                                           trailing: isOrganizer
                                               ? Chip(
-                                            label: const Text('Organizador'),
-                                            backgroundColor: Colors.amber[100],
-                                            labelStyle: const TextStyle(fontSize: 11),
-                                          )
+                                                  label: const Text(
+                                                    'Organizador',
+                                                  ),
+                                                  backgroundColor:
+                                                      Colors.amber[100],
+                                                  labelStyle: const TextStyle(
+                                                    fontSize: 11,
+                                                  ),
+                                                )
                                               : hasConfirmed
-                                              ? const Icon(Icons.check_circle, color: Colors.green, size: 24)
-                                              : Icon(Icons.schedule, color: Colors.grey[400], size: 20),
+                                              ? const Icon(
+                                                  Icons.check_circle,
+                                                  color: Colors.green,
+                                                  size: 24,
+                                                )
+                                              : Icon(
+                                                  Icons.schedule,
+                                                  color: Colors.grey[400],
+                                                  size: 20,
+                                                ),
                                         ),
                                       ),
                                     );
@@ -337,62 +431,72 @@ class _EventDetailPageState extends State<EventDetailPage> {
                         SizedBox(
                           width: double.infinity,
                           child: isPast
-                          // CASO 1: EL EVENTO YA PASÓ (CONGELADO)
+                              // CASO 1: EL EVENTO YA PASÓ (CONGELADO)
                               ? Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[200], // Fondo gris
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.grey[400]!),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.history, color: Colors.grey),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Evento finalizado',
-                                  style: TextStyle(
-                                      color: Colors.grey[700],
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[200], // Fondo gris
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: Colors.grey[400]!,
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          )
-                          // CASO 2: EL EVENTO ESTÁ VIGENTE (Lógica original)
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(
+                                        Icons.history,
+                                        color: Colors.grey,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Evento finalizado',
+                                        style: TextStyle(
+                                          color: Colors.grey[700],
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              // CASO 2: EL EVENTO ESTÁ VIGENTE (Lógica original)
                               : (isCreator
-                              ? ElevatedButton.icon(
-                            onPressed: () => _confirmDelete(context, creatorId),
-                            icon: const Icon(Icons.delete_forever),
-                            label: const Text('Cancelar evento'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red[50],
-                              foregroundColor: Colors.red,
-                              padding: const EdgeInsets.all(16),
-                            ),
-                          )
-                              : participants.contains(_currentUser?.uid)
-                              ? OutlinedButton.icon(
-                            onPressed: () => _confirmLeave(context),
-                            icon: const Icon(Icons.exit_to_app),
-                            label: const Text('Salir del evento'),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.all(16),
-                            ),
-                          )
-                              : ElevatedButton.icon(
-                            onPressed: () => _confirmJoin(context, widget.eventId),
-                            icon: const Icon(Icons.add_circle_outline),
-                            label: const Text('Unirme al evento'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green[50],
-                              foregroundColor: Colors.green[700],
-                              padding: const EdgeInsets.all(16),
-                            ),
-                          )
-                          ),
+                                    ? ElevatedButton.icon(
+                                        onPressed: () =>
+                                            _confirmDelete(context, creatorId),
+                                        icon: const Icon(Icons.delete_forever),
+                                        label: const Text('Cancelar evento'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.red[50],
+                                          foregroundColor: Colors.red,
+                                          padding: const EdgeInsets.all(16),
+                                        ),
+                                      )
+                                    : participants.contains(_currentUser?.uid)
+                                    ? OutlinedButton.icon(
+                                        onPressed: () => _confirmLeave(context),
+                                        icon: const Icon(Icons.exit_to_app),
+                                        label: const Text('Salir del evento'),
+                                        style: OutlinedButton.styleFrom(
+                                          padding: const EdgeInsets.all(16),
+                                        ),
+                                      )
+                                    : ElevatedButton.icon(
+                                        onPressed: () => _confirmJoin(
+                                          context,
+                                          widget.eventId,
+                                        ),
+                                        icon: const Icon(
+                                          Icons.add_circle_outline,
+                                        ),
+                                        label: const Text('Unirme al evento'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.green[50],
+                                          foregroundColor: Colors.green[700],
+                                          padding: const EdgeInsets.all(16),
+                                        ),
+                                      )),
                         ),
                         // Espacio extra al final para que no quede pegado al borde
                         const SizedBox(height: 40),
@@ -436,10 +540,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
       child: Stack(
         children: [
           GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: position,
-              zoom: 15,
-            ),
+            initialCameraPosition: CameraPosition(target: position, zoom: 15),
             onMapCreated: (controller) => _mapController = controller,
             markers: {
               Marker(
@@ -472,7 +573,9 @@ class _EventDetailPageState extends State<EventDetailPage> {
 
   // Abrir en Google Maps
   Future<void> _openInMaps(double lat, double lng) async {
-    final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+    final url = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
+    );
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     } else {
@@ -486,14 +589,16 @@ class _EventDetailPageState extends State<EventDetailPage> {
 
   // --- LÓGICA: EDITAR EVENTO (CON FECHA Y UBICACIÓN) ---
   void _showEditDialog(
-    BuildContext context, 
-    String currentTitle, 
-    String currentDesc, 
-    String creatorId, 
+    BuildContext context,
+    String currentTitle,
+    String currentDesc,
+    String creatorId,
     Timestamp? existingTimestamp,
     double? existingLat,
     double? existingLng,
     String existingAddress,
+    int? currentMaxParticipants,
+    int currentParticipantsCount,
   ) {
     final titleCtrl = TextEditingController(text: currentTitle);
     final descCtrl = TextEditingController(text: currentDesc);
@@ -502,233 +607,387 @@ class _EventDetailPageState extends State<EventDetailPage> {
     DateTime selectedDate = existingTimestamp != null
         ? existingTimestamp.toDate()
         : DateTime.now();
-    
+
     // Variables para la ubicación
     double? selectedLat = existingLat;
     double? selectedLng = existingLng;
     String selectedAddress = existingAddress;
+
+    // Variable para el límite de participantes
+    int? selectedMaxParticipants = currentMaxParticipants;
 
     showDialog(
       context: context,
       builder: (ctx) {
         // StatefulBuilder permite actualizar la fecha visualmente dentro del diálogo
         return StatefulBuilder(
-            builder: (context, setStateDialog) {
-              return AlertDialog(
-                title: const Text('Editar Evento'),
-                content: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextField(
-                        controller: titleCtrl,
-                        decoration: const InputDecoration(labelText: 'Título'),
-                        textCapitalization: TextCapitalization.sentences,
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: const Text('Editar Evento'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: titleCtrl,
+                      decoration: const InputDecoration(labelText: 'Título'),
+                      textCapitalization: TextCapitalization.sentences,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: descCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Descripción',
                       ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: descCtrl,
-                        decoration: const InputDecoration(labelText: 'Descripción'),
-                        maxLines: 3,
+                      maxLines: 3,
+                    ),
+                    const SizedBox(height: 20),
+
+                    // --- SELECTOR DE FECHA Y HORA ---
+                    InkWell(
+                      onTap: () async {
+                        // 1. Fecha
+                        final date = await showDatePicker(
+                          context: context,
+                          initialDate: selectedDate,
+                          firstDate: DateTime.now().subtract(
+                            const Duration(days: 1),
+                          ), // Permitir el día de hoy
+                          lastDate: DateTime(2100),
+                        );
+                        if (date == null) return;
+
+                        // 2. Hora
+                        if (!context.mounted) return;
+                        final time = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay.fromDateTime(selectedDate),
+                        );
+                        if (time == null) return;
+
+                        // 3. Actualizar estado del diálogo
+                        setStateDialog(() {
+                          selectedDate = DateTime(
+                            date.year,
+                            date.month,
+                            date.day,
+                            time.hour,
+                            time.minute,
+                          );
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.calendar_month,
+                              color: Colors.indigo,
+                            ),
+                            const SizedBox(width: 10),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  "Fecha y Hora:",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                                Text(
+                                  DateFormat(
+                                    'dd/MM/yyyy HH:mm',
+                                  ).format(selectedDate),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Spacer(),
+                            const Icon(
+                              Icons.edit,
+                              size: 18,
+                              color: Colors.grey,
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 20),
+                    ),
+                    // Advertencia si la fecha es pasada
+                    if (selectedDate.isBefore(DateTime.now()))
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          '⚠️ La fecha ya pasó',
+                          style: TextStyle(
+                            color: Colors.orange[700],
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
 
-                      // --- SELECTOR DE FECHA Y HORA ---
-                      InkWell(
-                        onTap: () async {
-                          // 1. Fecha
-                          final date = await showDatePicker(
-                            context: context,
-                            initialDate: selectedDate,
-                            firstDate: DateTime.now().subtract(const Duration(days: 1)), // Permitir el día de hoy
-                            lastDate: DateTime(2100),
-                          );
-                          if (date == null) return;
+                    const SizedBox(height: 20),
 
-                          // 2. Hora
-                          if (!context.mounted) return;
-                          final time = await showTimePicker(
-                            context: context,
-                            initialTime: TimeOfDay.fromDateTime(selectedDate),
-                          );
-                          if (time == null) return;
-
-                          // 3. Actualizar estado del diálogo
-                          setStateDialog(() {
-                            selectedDate = DateTime(
-                                date.year, date.month, date.day,
-                                time.hour, time.minute
+                    // --- SELECTOR DE UBICACIÓN ---
+                    const Text(
+                      'Ubicación:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    InkWell(
+                      onTap: () async {
+                        final result = await Navigator.of(context)
+                            .push<Map<String, dynamic>>(
+                              MaterialPageRoute(
+                                builder: (_) => const LocationPickerPage(),
+                              ),
                             );
+
+                        if (result != null) {
+                          setStateDialog(() {
+                            selectedLat = result['lat'];
+                            selectedLng = result['lng'];
+                            selectedAddress = result['address'];
                           });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.calendar_month, color: Colors.indigo),
-                              const SizedBox(width: 10),
-                              Column(
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey[300]!),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.location_on,
+                              color: selectedLat != null
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Colors.grey,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text("Fecha y Hora:", style: TextStyle(fontSize: 12, color: Colors.grey)),
                                   Text(
-                                    DateFormat('dd/MM/yyyy HH:mm').format(selectedDate),
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                    selectedLat != null
+                                        ? 'Ubicación seleccionada'
+                                        : 'Seleccionar ubicación',
+                                    style: TextStyle(
+                                      fontWeight: selectedLat != null
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                    ),
                                   ),
+                                  if (selectedLat != null) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      selectedAddress,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
                                 ],
                               ),
-                              const Spacer(),
-                              const Icon(Icons.edit, size: 18, color: Colors.grey),
-                            ],
-                          ),
+                            ),
+                            const Icon(Icons.chevron_right, color: Colors.grey),
+                          ],
                         ),
                       ),
-                      // Advertencia si la fecha es pasada
-                      if (selectedDate.isBefore(DateTime.now()))
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // --- SELECTOR DE LÍMITE DE PARTICIPANTES ---
+                    const Text(
+                      'Límite de participantes',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<int?>(
+                      value: selectedMaxParticipants,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.people_outline),
+                        border: const OutlineInputBorder(),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        helperText:
+                            'Actual: $currentParticipantsCount participantes',
+                        helperMaxLines: 2,
+                      ),
+                      items: [
+                        const DropdownMenuItem(
+                          value: null,
                           child: Text(
-                            '⚠️ La fecha ya pasó',
-                            style: TextStyle(color: Colors.orange[700], fontSize: 12),
+                            'Sin límite',
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                      
-                      const SizedBox(height: 20),
-                      
-                      // --- SELECTOR DE UBICACIÓN ---
-                      const Text('Ubicación:', style: TextStyle(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
-                      InkWell(
-                        onTap: () async {
-                          final result = await Navigator.of(context).push<Map<String, dynamic>>(
-                            MaterialPageRoute(builder: (_) => const LocationPickerPage()),
-                          );
-                          
-                          if (result != null) {
-                            setStateDialog(() {
-                              selectedLat = result['lat'];
-                              selectedLng = result['lng'];
-                              selectedAddress = result['address'];
-                            });
-                          }
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey[300]!),
-                            borderRadius: BorderRadius.circular(8),
+                        // Solo mostrar opciones >= participantes actuales
+                        if (currentParticipantsCount <= 5)
+                          const DropdownMenuItem(
+                            value: 5,
+                            child: Text(
+                              '5 personas',
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.location_on,
-                                color: selectedLat != null 
-                                  ? Theme.of(context).colorScheme.primary 
-                                  : Colors.grey,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      selectedLat != null 
-                                        ? 'Ubicación seleccionada' 
-                                        : 'Seleccionar ubicación',
-                                      style: TextStyle(
-                                        fontWeight: selectedLat != null 
-                                          ? FontWeight.bold 
-                                          : FontWeight.normal,
-                                      ),
-                                    ),
-                                    if (selectedLat != null) ...[
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        selectedAddress,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey[600],
-                                        ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                              const Icon(Icons.chevron_right, color: Colors.grey),
-                            ],
+                        if (currentParticipantsCount <= 10)
+                          const DropdownMenuItem(
+                            value: 10,
+                            child: Text(
+                              '10 personas',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        if (currentParticipantsCount <= 15)
+                          const DropdownMenuItem(
+                            value: 15,
+                            child: Text(
+                              '15 personas',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        if (currentParticipantsCount <= 20)
+                          const DropdownMenuItem(
+                            value: 20,
+                            child: Text(
+                              '20 personas',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        if (currentParticipantsCount <= 30)
+                          const DropdownMenuItem(
+                            value: 30,
+                            child: Text(
+                              '30 personas',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        if (currentParticipantsCount <= 50)
+                          const DropdownMenuItem(
+                            value: 50,
+                            child: Text(
+                              '50 personas',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                      ],
+                      onChanged: (value) {
+                        setStateDialog(() {
+                          selectedMaxParticipants = value;
+                        });
+                      },
+                    ),
+                    // Advertencia si intenta reducir mucho
+                    if (selectedMaxParticipants != null &&
+                        selectedMaxParticipants! < currentParticipantsCount + 3)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          '⚠️ El límite está cerca del número actual de participantes',
+                          style: TextStyle(
+                            color: Colors.orange[700],
+                            fontSize: 12,
                           ),
                         ),
                       ),
-                    ],
-                  ),
+                  ],
                 ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: const Text('Cancelar'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () async {
-                      final newTitle = titleCtrl.text.trim();
-                      final newDesc = descCtrl.text.trim();
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final newTitle = titleCtrl.text.trim();
+                    final newDesc = descCtrl.text.trim();
 
-                      if (newTitle.isEmpty) return;
+                    if (newTitle.isEmpty) return;
 
-                      // VALIDACIÓN: No permitir guardar fechas pasadas
-                      if (selectedDate.isBefore(DateTime.now())) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Debes elegir una fecha futura'),
-                                backgroundColor: Colors.red
-                            )
-                        );
-                        return;
-                      }
-
-                      // VALIDACIÓN: Ubicación requerida
-                      if (selectedLat == null || selectedLng == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Debes seleccionar una ubicación')),
-                        );
-                        return;
-                      }
-
-                      Navigator.pop(ctx); // Cerrar diálogo
-
-                      final error = await _eventCtrl.updateEvent(
-                          widget.eventId,
-                          creatorId,
-                          {
-                            'title': newTitle,
-                            'description': newDesc,
-                            'date': Timestamp.fromDate(selectedDate),
-                            'location': {
-                              'lat': selectedLat,
-                              'lng': selectedLng,
-                              'address': selectedAddress,
-                            },
-                          }
+                    // VALIDACIÓN: No permitir guardar fechas pasadas
+                    if (selectedDate.isBefore(DateTime.now())) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Debes elegir una fecha futura'),
+                          backgroundColor: Colors.red,
+                        ),
                       );
+                      return;
+                    }
 
-                      if (mounted) {
-                        if (error != null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(error), backgroundColor: Colors.red),
-                          );
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Evento actualizado')),
-                          );
-                        }
+                    // VALIDACIÓN: Ubicación requerida
+                    if (selectedLat == null || selectedLng == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Debes seleccionar una ubicación'),
+                        ),
+                      );
+                      return;
+                    }
+
+                    Navigator.pop(ctx); // Cerrar diálogo
+
+                    final updateData = <String, dynamic>{
+                      'title': newTitle,
+                      'description': newDesc,
+                      'date': Timestamp.fromDate(selectedDate),
+                      'location': {
+                        'lat': selectedLat,
+                        'lng': selectedLng,
+                        'address': selectedAddress,
+                      },
+                    };
+
+                    // Solo actualizar maxParticipants si cambió
+                    if (selectedMaxParticipants != currentMaxParticipants) {
+                      if (selectedMaxParticipants == null) {
+                        // Remover el límite usando FieldValue.delete()
+                        updateData['maxParticipants'] = FieldValue.delete();
+                      } else {
+                        updateData['maxParticipants'] = selectedMaxParticipants;
                       }
-                    },
-                    child: const Text('Guardar'),
-                  ),
-                ],
-              );
-            }
+                    }
+
+                    final error = await _eventCtrl.updateEvent(
+                      widget.eventId,
+                      creatorId,
+                      updateData,
+                    );
+
+                    if (mounted) {
+                      if (error != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(error),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Evento actualizado')),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('Guardar'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -742,8 +1001,14 @@ class _EventDetailPageState extends State<EventDetailPage> {
         title: const Text('¿Borrar evento?'),
         content: const Text('Esta acción no se puede deshacer.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Borrar', style: TextStyle(color: Colors.red))),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Borrar', style: TextStyle(color: Colors.red)),
+          ),
         ],
       ),
     );
@@ -762,8 +1027,14 @@ class _EventDetailPageState extends State<EventDetailPage> {
         title: const Text('¿Salir del evento?'),
         content: const Text('Dejarás de ver este evento en tu lista.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Salir')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Salir'),
+          ),
         ],
       ),
     );

@@ -145,7 +145,7 @@ class EventController {
     return controller.stream;
   }
 
-  // --- CREAR (CREATE) (Sin cambios) ---
+  // --- CREAR (CREATE) ---
   Future<String?> createEvent({
     required String title,
     required String description,
@@ -154,12 +154,13 @@ class EventController {
     required double lng,
     required String address,
     required String privacy,
+    int? maxParticipants, // null = sin límite
   }) async {
     final user = _auth.currentUser;
     if (user == null) return 'No estás autenticado';
 
     try {
-      await _db.collection('events').add({
+      final eventData = {
         'title': title,
         'description': description,
         'date': Timestamp.fromDate(date),
@@ -170,7 +171,14 @@ class EventController {
         'status': 'active',
         'privacy': privacy,
         'createdAt': FieldValue.serverTimestamp(),
-      });
+      };
+
+      // Solo agregar maxParticipants si tiene un valor
+      if (maxParticipants != null) {
+        eventData['maxParticipants'] = maxParticipants;
+      }
+
+      await _db.collection('events').add(eventData);
       return null;
     } catch (e) {
       debugPrint('Error creando evento: $e');
@@ -232,10 +240,16 @@ class EventController {
       final participants = List.from(data['participants'] ?? []);
       final invited = List.from(data['invited'] ?? []);
       final privacy = data['privacy'] ?? 'public';
+      final maxParticipants = data['maxParticipants'] as int?;
 
       if (currentUid == creatorId) return 'No puedes unirte a tu propio evento';
       if (participants.contains(currentUid))
         return 'Ya estás participando en este evento';
+
+      // Validar límite de participantes
+      if (maxParticipants != null && participants.length >= maxParticipants) {
+        return 'Este evento ha alcanzado su límite de $maxParticipants participantes';
+      }
 
       // Verificar permisos según privacidad
       switch (privacy) {
