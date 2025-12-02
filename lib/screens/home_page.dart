@@ -663,7 +663,7 @@ class _HomePageState extends State<HomePage> {
                                   // Acciones Rápidas (Botones)
                                   const SizedBox(height: 16),
 
-                                  // Próximo Evento
+                                  // Próximo Evento (con lógica híbrida)
                                   StreamBuilder<QuerySnapshot>(
                                     stream: FirebaseFirestore.instance
                                         .collection('events')
@@ -673,10 +673,14 @@ class _HomePageState extends State<HomePage> {
                                         )
                                         .where(
                                           'date',
-                                          isGreaterThan: Timestamp.now(),
+                                          isGreaterThan: Timestamp.fromDate(
+                                            DateTime.now().subtract(
+                                              const Duration(hours: 24),
+                                            ),
+                                          ),
                                         )
                                         .orderBy('date')
-                                        .limit(1)
+                                        .limit(5)
                                         .snapshots(),
                                     builder: (context, nextSnapshot) {
                                       if (!nextSnapshot.hasData ||
@@ -684,200 +688,353 @@ class _HomePageState extends State<HomePage> {
                                         return const SizedBox.shrink();
                                       }
 
-                                      final nextEvent =
-                                          nextSnapshot.data!.docs.first;
-                                      final data =
-                                          nextEvent.data()
-                                              as Map<String, dynamic>;
-                                      final title = data['title'] ?? 'Evento';
-                                      final eventDate =
-                                          (data['date'] as Timestamp).toDate();
-                                      final now = DateTime.now();
-                                      final difference = eventDate.difference(
-                                        now,
-                                      );
-
-                                      String timeLeft;
-                                      Color countdownColor;
-                                      if (difference.inDays > 0) {
-                                        timeLeft = '${difference.inDays}d';
-                                        countdownColor = colorScheme.primary;
-                                      } else if (difference.inHours > 0) {
-                                        timeLeft = '${difference.inHours}h';
-                                        countdownColor = Colors.orange;
-                                      } else if (difference.inMinutes > 0) {
-                                        timeLeft = '${difference.inMinutes}m';
-                                        countdownColor = colorScheme.error;
-                                      } else {
-                                        timeLeft = '¡Ahora!';
-                                        countdownColor = colorScheme.error;
-                                      }
-
-                                      return Container(
-                                        padding: const EdgeInsets.all(16),
-                                        decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            colors: [
-                                              colorScheme.primaryContainer,
-                                              colorScheme.secondaryContainer,
-                                            ],
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                          border: Border.all(
-                                            color: colorScheme.primary
-                                                .withOpacity(0.3),
-                                            width: 1,
-                                          ),
+                                      // Buscar el primer evento que debe mostrarse
+                                      return FutureBuilder<DocumentSnapshot?>(
+                                        future: _findNextDisplayableEvent(
+                                          nextSnapshot.data!.docs,
+                                          u.uid,
                                         ),
-                                        child: InkWell(
-                                          onTap: () {
-                                            Navigator.of(context).push(
-                                              MaterialPageRoute(
-                                                builder: (_) => EventDetailPage(
-                                                  eventId: nextEvent.id,
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              Container(
+                                        builder: (context, eventFuture) {
+                                          if (!eventFuture.hasData ||
+                                              eventFuture.data == null) {
+                                            return const SizedBox.shrink();
+                                          }
+
+                                          final nextEvent = eventFuture.data!;
+                                          final data =
+                                              nextEvent.data()
+                                                  as Map<String, dynamic>;
+                                          final title =
+                                              data['title'] ?? 'Evento';
+                                          final eventDate =
+                                              (data['date'] as Timestamp)
+                                                  .toDate();
+                                          final now = DateTime.now();
+                                          final difference = eventDate
+                                              .difference(now);
+
+                                          // Verificar si hay confirmación de asistencia
+                                          return FutureBuilder<
+                                            DocumentSnapshot
+                                          >(
+                                            future: FirebaseFirestore.instance
+                                                .collection('events')
+                                                .doc(nextEvent.id)
+                                                .collection('attendance')
+                                                .doc(u.uid)
+                                                .get(),
+                                            builder: (context, attendanceSnapshot) {
+                                              final hasConfirmed =
+                                                  attendanceSnapshot.hasData &&
+                                                  attendanceSnapshot
+                                                      .data!
+                                                      .exists &&
+                                                  (attendanceSnapshot.data!
+                                                              .data()
+                                                          as Map<
+                                                            String,
+                                                            dynamic
+                                                          >?)?['status'] ==
+                                                      'confirmed';
+
+                                              String timeLeft;
+                                              Color countdownColor;
+                                              IconData displayIcon;
+                                              bool showConfirmedBadge = false;
+
+                                              if (hasConfirmed &&
+                                                  difference.inHours < 0 &&
+                                                  difference.inHours > -3) {
+                                                // Evento confirmado en curso (hasta 3h después)
+                                                timeLeft = 'En curso';
+                                                countdownColor = Colors.blue;
+                                                displayIcon =
+                                                    Icons.check_circle;
+                                                showConfirmedBadge = true;
+                                              } else if (difference.inDays >
+                                                  0) {
+                                                timeLeft =
+                                                    '${difference.inDays}d';
+                                                countdownColor =
+                                                    colorScheme.primary;
+                                                displayIcon = Icons.alarm;
+                                              } else if (difference.inHours >
+                                                  0) {
+                                                timeLeft =
+                                                    '${difference.inHours}h';
+                                                countdownColor = Colors.orange;
+                                                displayIcon = Icons.alarm;
+                                              } else if (difference.inMinutes >
+                                                  0) {
+                                                timeLeft =
+                                                    '${difference.inMinutes}m';
+                                                countdownColor =
+                                                    colorScheme.error;
+                                                displayIcon = Icons.alarm;
+                                              } else if (difference.inMinutes >
+                                                      -60 &&
+                                                  !hasConfirmed) {
+                                                // Evento pasó hace menos de 1h y no confirmó
+                                                timeLeft = '¡Ahora!';
+                                                countdownColor =
+                                                    colorScheme.error;
+                                                displayIcon = Icons.alarm;
+                                              } else {
+                                                // No mostrar (ya pasó el tiempo límite)
+                                                return const SizedBox.shrink();
+                                              }
+
+                                              return Container(
                                                 padding: const EdgeInsets.all(
-                                                  8,
+                                                  16,
                                                 ),
                                                 decoration: BoxDecoration(
-                                                  color:
-                                                      Theme.of(
-                                                            context,
-                                                          ).brightness ==
-                                                          Brightness.light
-                                                      ? Colors.white
-                                                            .withOpacity(0.2)
-                                                      : colorScheme.primary
-                                                            .withOpacity(0.15),
+                                                  gradient: LinearGradient(
+                                                    colors: [
+                                                      showConfirmedBadge
+                                                          ? Colors.blue.shade100
+                                                          : colorScheme
+                                                                .primaryContainer,
+                                                      showConfirmedBadge
+                                                          ? Colors.blue.shade200
+                                                          : colorScheme
+                                                                .secondaryContainer,
+                                                    ],
+                                                  ),
                                                   borderRadius:
                                                       BorderRadius.circular(12),
-                                                ),
-                                                child: Icon(
-                                                  Icons.alarm,
-                                                  color:
-                                                      Theme.of(
-                                                            context,
-                                                          ).brightness ==
-                                                          Brightness.light
-                                                      ? Colors.white
-                                                      : colorScheme.primary,
-                                                  size: 24,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 12),
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      'Próximo evento',
-                                                      style: Theme.of(context)
-                                                          .textTheme
-                                                          .labelMedium
-                                                          ?.copyWith(
-                                                            color:
-                                                                Theme.of(
-                                                                      context,
-                                                                    ).brightness ==
-                                                                    Brightness
-                                                                        .light
-                                                                ? colorScheme
-                                                                      .secondary
-                                                                      .withOpacity(
-                                                                        0.7,
-                                                                      )
-                                                                : colorScheme
-                                                                      .primary,
-                                                            fontWeight:
-                                                                FontWeight.w600,
-                                                          ),
-                                                    ),
-                                                    const SizedBox(height: 4),
-                                                    Text(
-                                                      title,
-                                                      style: Theme.of(context)
-                                                          .textTheme
-                                                          .titleMedium
-                                                          ?.copyWith(
-                                                            color:
-                                                                Theme.of(
-                                                                      context,
-                                                                    ).brightness ==
-                                                                    Brightness
-                                                                        .light
-                                                                ? Colors.white
-                                                                : Colors.white
-                                                                      .withOpacity(
-                                                                        0.8,
-                                                                      ),
-                                                            fontWeight:
-                                                                FontWeight.w700,
-                                                          ),
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                      maxLines: 1,
-                                                    ),
-                                                    const SizedBox(height: 2),
-                                                    Text(
-                                                      '${eventDate.day}/${eventDate.month}/${eventDate.year} a las ${eventDate.hour.toString().padLeft(2, '0')}:${eventDate.minute.toString().padLeft(2, '0')}',
-                                                      style: Theme.of(context)
-                                                          .textTheme
-                                                          .bodySmall
-                                                          ?.copyWith(
-                                                            color: colorScheme
-                                                                .onSurfaceVariant,
-                                                          ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 16,
-                                                      vertical: 8,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: countdownColor,
-                                                  borderRadius:
-                                                      BorderRadius.circular(20),
-                                                  boxShadow: [
-                                                    BoxShadow(
-                                                      color: countdownColor
-                                                          .withOpacity(0.3),
-                                                      blurRadius: 8,
-                                                      offset: const Offset(
-                                                        0,
-                                                        2,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                child: Text(
-                                                  timeLeft,
-                                                  style: TextStyle(
-                                                    color:
-                                                        colorScheme.onPrimary,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 16,
+                                                  border: Border.all(
+                                                    color: showConfirmedBadge
+                                                        ? Colors.blue
+                                                              .withOpacity(0.5)
+                                                        : colorScheme.primary
+                                                              .withOpacity(0.3),
+                                                    width: 1,
                                                   ),
                                                 ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
+                                                child: InkWell(
+                                                  onTap: () {
+                                                    Navigator.of(context).push(
+                                                      MaterialPageRoute(
+                                                        builder: (_) =>
+                                                            EventDetailPage(
+                                                              eventId:
+                                                                  nextEvent.id,
+                                                            ),
+                                                      ),
+                                                    );
+                                                  },
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                  child: Column(
+                                                    children: [
+                                                      if (showConfirmedBadge)
+                                                        Container(
+                                                          margin:
+                                                              const EdgeInsets.only(
+                                                                bottom: 12,
+                                                              ),
+                                                          padding:
+                                                              const EdgeInsets.symmetric(
+                                                                horizontal: 12,
+                                                                vertical: 6,
+                                                              ),
+                                                          decoration: BoxDecoration(
+                                                            color: Colors.green,
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  20,
+                                                                ),
+                                                          ),
+                                                          child: Row(
+                                                            mainAxisSize:
+                                                                MainAxisSize
+                                                                    .min,
+                                                            children: const [
+                                                              Icon(
+                                                                Icons
+                                                                    .check_circle,
+                                                                color: Colors
+                                                                    .white,
+                                                                size: 16,
+                                                              ),
+                                                              SizedBox(
+                                                                width: 6,
+                                                              ),
+                                                              Text(
+                                                                '✓ Llegada confirmada',
+                                                                style: TextStyle(
+                                                                  color: Colors
+                                                                      .white,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                  fontSize: 13,
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      Row(
+                                                        children: [
+                                                          Container(
+                                                            padding:
+                                                                const EdgeInsets.all(
+                                                                  8,
+                                                                ),
+                                                            decoration: BoxDecoration(
+                                                              color:
+                                                                  Theme.of(
+                                                                        context,
+                                                                      ).brightness ==
+                                                                      Brightness
+                                                                          .light
+                                                                  ? Colors.white
+                                                                        .withOpacity(
+                                                                          0.2,
+                                                                        )
+                                                                  : colorScheme
+                                                                        .primary
+                                                                        .withOpacity(
+                                                                          0.15,
+                                                                        ),
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    12,
+                                                                  ),
+                                                            ),
+                                                            child: Icon(
+                                                              displayIcon,
+                                                              color:
+                                                                  Theme.of(
+                                                                        context,
+                                                                      ).brightness ==
+                                                                      Brightness
+                                                                          .light
+                                                                  ? Colors.white
+                                                                  : colorScheme
+                                                                        .primary,
+                                                              size: 24,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            width: 12,
+                                                          ),
+                                                          Expanded(
+                                                            child: Column(
+                                                              crossAxisAlignment:
+                                                                  CrossAxisAlignment
+                                                                      .start,
+                                                              children: [
+                                                                Text(
+                                                                  'Próximo evento',
+                                                                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                                                    color:
+                                                                        Theme.of(
+                                                                              context,
+                                                                            ).brightness ==
+                                                                            Brightness.light
+                                                                        ? colorScheme.secondary.withOpacity(
+                                                                            0.7,
+                                                                          )
+                                                                        : colorScheme
+                                                                              .primary,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w600,
+                                                                  ),
+                                                                ),
+                                                                const SizedBox(
+                                                                  height: 4,
+                                                                ),
+                                                                Text(
+                                                                  title,
+                                                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                                                    color:
+                                                                        Theme.of(
+                                                                              context,
+                                                                            ).brightness ==
+                                                                            Brightness.light
+                                                                        ? Colors
+                                                                              .white
+                                                                        : Colors.white.withOpacity(
+                                                                            0.8,
+                                                                          ),
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w700,
+                                                                  ),
+                                                                  overflow:
+                                                                      TextOverflow
+                                                                          .ellipsis,
+                                                                  maxLines: 1,
+                                                                ),
+                                                                const SizedBox(
+                                                                  height: 2,
+                                                                ),
+                                                                Text(
+                                                                  '${eventDate.day}/${eventDate.month}/${eventDate.year} a las ${eventDate.hour.toString().padLeft(2, '0')}:${eventDate.minute.toString().padLeft(2, '0')}',
+                                                                  style: Theme.of(context)
+                                                                      .textTheme
+                                                                      .bodySmall
+                                                                      ?.copyWith(
+                                                                        color: colorScheme
+                                                                            .onSurfaceVariant,
+                                                                      ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                          Container(
+                                                            padding:
+                                                                const EdgeInsets.symmetric(
+                                                                  horizontal:
+                                                                      16,
+                                                                  vertical: 8,
+                                                                ),
+                                                            decoration: BoxDecoration(
+                                                              color:
+                                                                  countdownColor,
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    20,
+                                                                  ),
+                                                              boxShadow: [
+                                                                BoxShadow(
+                                                                  color: countdownColor
+                                                                      .withOpacity(
+                                                                        0.3,
+                                                                      ),
+                                                                  blurRadius: 8,
+                                                                  offset:
+                                                                      const Offset(
+                                                                        0,
+                                                                        2,
+                                                                      ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                            child: Text(
+                                                              timeLeft,
+                                                              style: TextStyle(
+                                                                color: colorScheme
+                                                                    .onPrimary,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                                fontSize: 16,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          );
+                                        },
                                       );
                                     },
                                   ),
@@ -1225,7 +1382,6 @@ class _HomePageState extends State<HomePage> {
 
   // Reemplaza tu método _buildMapView() actual por este:
   Widget _buildMapView() {
-    final colorScheme = Theme.of(context).colorScheme;
     if (_myPos == null) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -1821,5 +1977,51 @@ class _HomePageState extends State<HomePage> {
     } catch (e) {
       return [];
     }
+  }
+
+  // Encontrar el próximo evento a mostrar según la lógica híbrida
+  Future<DocumentSnapshot?> _findNextDisplayableEvent(
+    List<QueryDocumentSnapshot> events,
+    String userId,
+  ) async {
+    final now = DateTime.now();
+
+    for (var eventDoc in events) {
+      final eventData = eventDoc.data() as Map<String, dynamic>;
+      final eventDate = (eventData['date'] as Timestamp).toDate();
+      final difference = eventDate.difference(now);
+
+      // Verificar si hay confirmación
+      final attendanceDoc = await FirebaseFirestore.instance
+          .collection('events')
+          .doc(eventDoc.id)
+          .collection('attendance')
+          .doc(userId)
+          .get();
+
+      final hasConfirmed =
+          attendanceDoc.exists &&
+          attendanceDoc.data()?['status'] == 'confirmed';
+
+      // Lógica híbrida:
+      // - Si es futuro: siempre mostrar
+      // - Si pasó y está confirmado: mostrar hasta 3h después
+      // - Si pasó y NO está confirmado: mostrar hasta 1h después
+
+      if (difference.inMinutes > 0) {
+        // Evento futuro - siempre mostrar
+        return eventDoc;
+      } else if (hasConfirmed && difference.inHours > -3) {
+        // Evento confirmado en las últimas 3 horas
+        return eventDoc;
+      } else if (!hasConfirmed && difference.inHours > -1) {
+        // Evento no confirmado en la última hora
+        return eventDoc;
+      }
+      // Si no cumple las condiciones, continuar con el siguiente
+    }
+
+    // No hay eventos que cumplan los criterios
+    return null;
   }
 }
