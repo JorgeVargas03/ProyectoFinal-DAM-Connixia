@@ -988,16 +988,24 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // Reemplaza tu método _buildMapView() actual por este:
   Widget _buildMapView() {
+    final colorScheme = Theme.of(context).colorScheme;
     if (_myPos == null) {
       return const Center(child: CircularProgressIndicator());
     }
 
+    // --- CAMBIO CLAVE: Usamos getNearbyEvents para una consulta más eficiente ---
     return StreamBuilder<QuerySnapshot>(
-      stream: _eventCtrl.getAllPublicEvents(),
+      stream: _eventCtrl.getNearbyEvents(
+        userLat: _myPos!.latitude,
+        userLng: _myPos!.longitude,
+        radiusInKm: 50, // Radio de búsqueda de 50 km
+      ),
       builder: (context, snapshot) {
         Set<Marker> eventMarkers = {};
         if (snapshot.hasData) {
+          // Ahora _buildEventMarkers recibe los eventos ya pre-filtrados
           eventMarkers = _buildEventMarkers(snapshot.data!.docs);
         }
 
@@ -1010,24 +1018,39 @@ class _HomePageState extends State<HomePage> {
             Marker(
               markerId: const MarkerId('mi_ubicacion'),
               position: _myPos!,
-              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
               infoWindow: const InfoWindow(title: 'Tu ubicación'),
             ),
             ...eventMarkers,
           },
           onTap: (position) {
+
           },
         );
       },
     );
   }
 
+
   Set<Marker> _buildEventMarkers(List<DocumentSnapshot> events) {
     final markers = <Marker>{};
     final myUid = FirebaseAuth.instance.currentUser?.uid;
 
+    final twelveHoursAgo = DateTime.now().subtract(const Duration(hours: 12));
+
     for (var doc in events) {
       final data = doc.data() as Map<String, dynamic>;
+
+      final Timestamp? eventTimestamp = data['date'];
+
+      if (eventTimestamp != null) {
+        final eventDate = eventTimestamp.toDate();
+
+        if (eventDate.isBefore(twelveHoursAgo)) {
+          continue;
+        }
+      }
+
       final lat = data['location']?['lat'] as double?;
       final lng = data['location']?['lng'] as double?;
       final title = data['title'] ?? 'Evento';
