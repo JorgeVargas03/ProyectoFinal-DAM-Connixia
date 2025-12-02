@@ -10,7 +10,7 @@ class EventController {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final NotificationService _notificationService = NotificationService();
 
-  // --- FUNCIÓN DE MANTENIMIENTO (Sin cambios, es correcta) ---
+  // FUNCIÓN DE MANTENIMIENTO
   Future<String> updateOldEventsToPublic() async {
     try {
       final snapshot = await _db
@@ -36,7 +36,7 @@ class EventController {
 
   String? get currentUid => _auth.currentUser?.uid;
 
-  // --- OBTENER IDS DE CONTACTOS (CORREGIDO) ---
+  // OBTENER IDS DE CONTACTOS
   // Lee los contactos desde el array 'contacts' en el documento del usuario.
   Future<List<String>> _getContactIds() async {
     if (currentUid == null) return [];
@@ -52,7 +52,7 @@ class EventController {
     }
   }
 
-  // --- LEER EVENTOS DONDE PARTICIPO (Sin cambios) ---
+  // LEER EVENTOS DONDE PARTICIPO
   Stream<QuerySnapshot> getMyEvents() {
     if (currentUid == null) return const Stream.empty();
     return _db
@@ -62,7 +62,7 @@ class EventController {
         .snapshots();
   }
 
-  // --- LEER TODOS LOS EVENTOS VISIBLES (CORREGIDO) ---
+  // LEER TODOS LOS EVENTOS VISIBLES
   // Aplica el filtrado de semiprivados y privados en el cliente.
   // Públicos: todos lo ven
   // Semiprivados: solo contactos del creador
@@ -100,7 +100,7 @@ class EventController {
     return controller.stream;
   }
 
-  // --- LEER EVENTOS VISIBLES CERCANOS (CORREGIDO) ---
+  // LEER EVENTOS VISIBLES CERCANOS
   // Aplica el filtrado de semiprivados y privados en el cliente.
   Stream<QuerySnapshot> getNearbyEvents({
     required double userLat,
@@ -145,7 +145,7 @@ class EventController {
     return controller.stream;
   }
 
-  // --- CREAR (CREATE) ---
+  // CREAR (CREATE)
   Future<String?> createEvent({
     required String title,
     required String description,
@@ -186,7 +186,7 @@ class EventController {
     }
   }
 
-  // --- BORRAR (DELETE) (Sin cambios) ---
+  // BORRAR (DELETE)
   Future<String?> deleteEvent(String eventId, String creatorId) async {
     if (currentUid != creatorId)
       return 'No tienes permiso para borrar este evento';
@@ -198,7 +198,7 @@ class EventController {
     }
   }
 
-  // --- EDITAR (UPDATE) (Sin cambios) ---
+  // EDITAR (UPDATE)
   Future<String?> updateEvent(
     String eventId,
     String creatorId,
@@ -214,7 +214,7 @@ class EventController {
     }
   }
 
-  // --- SALIRSE (LEAVE) (Sin cambios) ---
+  // SALIRSE (LEAVE)
   Future<String?> leaveEvent(String eventId) async {
     if (currentUid == null) return 'Error de sesión';
     try {
@@ -227,7 +227,7 @@ class EventController {
     }
   }
 
-  // --- UNIRSE (JOIN) (CORREGIDO) ---
+  // UNIRSE (JOIN)
   Future<String?> joinEvent(String eventId) async {
     if (currentUid == null) return 'Error de sesión';
     try {
@@ -306,7 +306,7 @@ class EventController {
     }
   }
 
-  // --- MÉTODOS DE AYUDA (NUEVOS y sin cambios) ---
+  // MÉTODOS DE AYUDA
 
   // Lógica de filtrado reutilizable
   // Públicos: todos lo ven
@@ -346,7 +346,7 @@ class EventController {
     return _FakeQuerySnapshot(docs, metadata);
   }
 
-  // --- CÁLCULO DE DISTANCIA (Sin cambios) ---
+  // CÁLCULO DE DISTANCIA
   double calculateDistance(double lat1, double lng1, double lat2, double lng2) {
     const r = 6371;
     final dLat = _toRadians(lat2 - lat1);
@@ -363,7 +363,7 @@ class EventController {
 
   double _toRadians(double d) => d * pi / 180;
 
-  // --- OBTENER INFO DE PARTICIPANTES (Sin cambios) ---
+  // OBTENER INFO DE PARTICIPANTES
   Future<List<Map<String, dynamic>>> getParticipantsInfo(
     List<String> participantIds,
   ) async {
@@ -392,7 +392,7 @@ class EventController {
     }
   }
 
-  // --- MARCAR COMO "EN CAMINO" ---
+  // MARCAR COMO "EN CAMINO"
   Future<String?> setOnTheWay(String eventId, bool isOnTheWay) async {
     if (currentUid == null) return 'Error de sesión';
     try {
@@ -413,7 +413,7 @@ class EventController {
     }
   }
 
-  // --- OBTENER USUARIOS "EN CAMINO" ---
+  // OBTENER USUARIOS "EN CAMINO"
   Stream<QuerySnapshot> getOnTheWayUsers(String eventId) {
     return _db
         .collection('events')

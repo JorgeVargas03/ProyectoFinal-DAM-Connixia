@@ -43,7 +43,7 @@ class _EventsPageState extends State<EventsPage> {
     return DateFormat('dd MMM HH:mm', 'es').format(timestamp.toDate());
   }
 
-  // --- NUEVO HELPER para obtener icono de privacidad ---
+  // Helper para obtener icono de privacidad
   Icon _getPrivacyIcon(String? privacy, {double size = 16}) {
     switch (privacy) {
       case 'public':
@@ -57,7 +57,7 @@ class _EventsPageState extends State<EventsPage> {
     }
   }
 
-  // --- NUEVO HELPER para obtener texto de privacidad ---
+  // Helper para obtener texto de privacidad
   String _getPrivacyText(String? privacy) {
     switch (privacy) {
       case 'public':
@@ -85,7 +85,7 @@ class _EventsPageState extends State<EventsPage> {
       ),
       body: Column(
         children: [
-          // --- BARRA DE FILTROS DE TIEMPO ---
+          // BARRA DE FILTROS DE TIEMPO
           Container(
             margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
             height: 40,
@@ -101,7 +101,7 @@ class _EventsPageState extends State<EventsPage> {
             ),
           ),
 
-          // --- LISTA DE EVENTOS ---
+          // LISTA DE EVENTOS
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: _eventCtrl.getMyEvents(),
@@ -329,7 +329,7 @@ class _EventsPageState extends State<EventsPage> {
     );
   }
 
-  // --- WIDGET PARA LOS CHIPS DE FILTRO ---
+  // Widget para los chips de filtro
   Widget _buildFilterChip(String label, String value) {
     final isSelected = _timeFilter == value;
     final colorScheme = Theme.of(context).colorScheme;
@@ -361,7 +361,6 @@ class _EventsPageState extends State<EventsPage> {
   }
 
   Future<void> _confirmDelete(String eventId, String creatorId) async {
-    // ... sin cambios ...
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -393,7 +392,6 @@ class _EventsPageState extends State<EventsPage> {
   }
 
   Future<void> _confirmLeave(String eventId) async {
-    // ... sin cambios ...
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -472,7 +470,7 @@ class _EventsPageState extends State<EventsPage> {
                     ),
                     const SizedBox(height: 20),
 
-                    // --- SELECTOR DE PRIVACIDAD ---
+                    // SELECTOR DE PRIVACIDAD
                     const Text(
                       'Visibilidad',
                       style: TextStyle(fontWeight: FontWeight.bold),
@@ -523,7 +521,7 @@ class _EventsPageState extends State<EventsPage> {
 
                     const SizedBox(height: 20),
 
-                    // --- SELECTOR DE LÍMITE DE PARTICIPANTES ---
+                    // SELECTOR DE LÍMITE DE PARTICIPANTES
                     const Text(
                       'Límite de participantes',
                       style: TextStyle(fontWeight: FontWeight.bold),
@@ -640,7 +638,7 @@ class _EventsPageState extends State<EventsPage> {
 
                     const SizedBox(height: 20),
 
-                    // --- SELECTOR DE FECHA ---
+                    // SELECTOR DE FECHA
                     const Text(
                       '¿Cuándo?',
                       style: TextStyle(fontWeight: FontWeight.bold),
@@ -714,7 +712,7 @@ class _EventsPageState extends State<EventsPage> {
 
                     const SizedBox(height: 20),
 
-                    // --- SELECTOR DE UBICACIÓN ---
+                    // SELECTOR DE UBICACIÓN
                     const Text(
                       '¿Dónde?',
                       style: TextStyle(fontWeight: FontWeight.bold),
@@ -857,7 +855,7 @@ class _EventsPageState extends State<EventsPage> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              '✅ Evento "$title" creado exitosamente',
+                              'Evento "$title" creado exitosamente',
                             ),
                             backgroundColor: Colors.green,
                             duration: const Duration(seconds: 3),

@@ -1,9 +1,21 @@
 # Connixia — Encuentros geolocalizados
 
-## Descripción del proyecto
+## 🎯 Descripción del proyecto
 Connixia es una aplicación móvil que facilita la creación y participación en eventos o reuniones geolocalizadas. Permite a los usuarios registrarse e iniciar sesión, proponer puntos de encuentro en un mapa (Google Maps), establecer horarios y confirmar asistencia. La app guía a cada participante con la ruta de navegación hasta el punto marcado y, al llegar, permite confirmar la llegada mediante el gesto de sacudir el dispositivo (shake), notificando automáticamente al creador del evento o al resto de asistentes.
 
 El objetivo es promover nuevas amistades y la convivencia, facilitando que cualquier persona encuentre compañía para actividades cuando sus contactos habituales no estén disponibles.
+
+## 🔐 Módulo de Administración
+✨ **NUEVO**: La aplicación incluye un **módulo de administración completo** que permite supervisar y moderar la plataforma sin alterar el flujo de usuarios normales.
+
+### Características del Panel Admin:
+- 📊 **Dashboard con estadísticas** en tiempo real
+- 👥 **Gestión de usuarios**: Ver, buscar, cambiar roles (admin/user), suspender/activar
+- 📅 **Gestión de eventos**: Ver, buscar, filtrar y eliminar eventos
+- 🔍 **Búsqueda avanzada** por nombre, email o título de evento
+- 🛡️ **Control de acceso** basado en roles
+
+**Para más información, consulta:** [ADMIN_MODULE.md](./ADMIN_MODULE.md)
 
 ## Objetivos
 - Reducir la fricción para organizar y sumarse a reuniones cercanas.

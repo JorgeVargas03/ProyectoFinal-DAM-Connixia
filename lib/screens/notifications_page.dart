@@ -137,7 +137,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
               final status = data['status'] ?? 'pending';
               final eventId = data['eventId'];
 
-              // --- CORRECCIÓN 1: RECUPERAR EL TIEMPO (Esto faltaba) ---
+              // Recuperar el tiempo de la notificación
               final timestamp = data['createdAt'] as Timestamp?;
               String timeAgo = 'Ahora';
 
@@ -459,12 +459,12 @@ class _NotificationsPageState extends State<NotificationsPage> {
     );
   }
 
-  // --- CORRECCIÓN 2: AGREGAR EL ICONO DE INVITACIÓN AL SWITCH ---
+  // Icono según tipo de notificación
   IconData _getIconForType(String type) {
     switch (type) {
       case 'event_join':
         return Icons.person_add;
-      case 'event_invite': // Nuevo caso
+      case 'event_invite':
         return Icons.mail;
       case 'event_update':
         return Icons.event;

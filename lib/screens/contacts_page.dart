@@ -31,7 +31,8 @@ class _ContactsScreenState extends State<ContactsScreen> {
                 .collection('friend_requests')
                 .snapshots(),
             builder: (context, snapshot) {
-              final hasRequests = snapshot.hasData && snapshot.data!.docs.isNotEmpty;
+              final hasRequests =
+                  snapshot.hasData && snapshot.data!.docs.isNotEmpty;
 
               return Stack(
                 children: [
@@ -39,8 +40,10 @@ class _ContactsScreenState extends State<ContactsScreen> {
                     icon: const Icon(Icons.notifications),
                     onPressed: () {
                       Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const FriendRequestsPage())
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const FriendRequestsPage(),
+                        ),
                       );
                     },
                   ),
@@ -54,13 +57,16 @@ class _ContactsScreenState extends State<ContactsScreen> {
                           color: Colors.red,
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        constraints: const BoxConstraints(minWidth: 12, minHeight: 12),
+                        constraints: const BoxConstraints(
+                          minWidth: 12,
+                          minHeight: 12,
+                        ),
                       ),
-                    )
+                    ),
                 ],
               );
             },
-          )
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -87,7 +93,11 @@ class _ContactsScreenState extends State<ContactsScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.groups_outlined, size: 80, color: Colors.grey[400]),
+                  Icon(
+                    Icons.groups_outlined,
+                    size: 80,
+                    color: Colors.grey[400],
+                  ),
                   const SizedBox(height: 16),
                   const Text(
                     'No tienes contactos aún.\n¡Usa el botón para buscar amigos!',
@@ -150,34 +160,47 @@ class _ContactTile extends StatelessWidget {
         return Card(
           elevation: 1,
           margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           child: InkWell(
             borderRadius: BorderRadius.circular(16),
             onTap: () {
               // NAVEGACIÓN A PERFIL DE USUARIO
               Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => UserProfilePage(targetUserId: uid, userName: name)
-                  )
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      UserProfilePage(targetUserId: uid, userName: name),
+                ),
               );
             },
             child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 8,
+              ),
               leading: CircleAvatar(
                 radius: 25,
-                backgroundImage: photoURL.isNotEmpty ? NetworkImage(photoURL) : null,
+                backgroundImage: photoURL.isNotEmpty
+                    ? NetworkImage(photoURL)
+                    : null,
                 child: photoURL.isEmpty
-                    ? Text(name.isNotEmpty ? name[0].toUpperCase() : '?',
-                    style: const TextStyle(fontWeight: FontWeight.bold))
+                    ? Text(
+                        name.isNotEmpty ? name[0].toUpperCase() : '?',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      )
                     : null,
               ),
               title: Text(
                 name,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
               subtitle: Text(userData['email'] ?? ''),
-              // AQUÍ ESTÁ EL CAMBIO SOLICITADO: Favorito + Menú de 3 puntos
+              // Favorito + Menú de opciones
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -194,18 +217,22 @@ class _ContactTile extends StatelessWidget {
                         _confirmDelete(context, uid, name);
                       }
                     },
-                    itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                      const PopupMenuItem<String>(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete, color: Colors.red),
-                            SizedBox(width: 8),
-                            Text('Eliminar contacto', style: TextStyle(color: Colors.red)),
-                          ],
-                        ),
-                      ),
-                    ],
+                    itemBuilder: (BuildContext context) =>
+                        <PopupMenuEntry<String>>[
+                          const PopupMenuItem<String>(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete, color: Colors.red),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Eliminar contacto',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                   ),
                 ],
               ),
@@ -223,16 +250,19 @@ class _ContactTile extends StatelessWidget {
         title: Text('¿Eliminar a $name?'),
         content: const Text('Se eliminará de tu lista de contactos.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
           TextButton(
-              onPressed: () async {
-                // 1. Llamamos al controlador actualizado
-                await controller.deleteContact(uid);
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () async {
+              // 1. Llamamos al controlador actualizado
+              await controller.deleteContact(uid);
 
-                // 2. Cerramos el diálogo (La lista de fondo se actualizará sola gracias al Stream)
-                if (ctx.mounted) Navigator.pop(ctx);
-              },
-              child: const Text('Eliminar', style: TextStyle(color: Colors.red))
+              // 2. Cerramos el diálogo (La lista de fondo se actualizará sola gracias al Stream)
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -252,13 +282,19 @@ class FriendRequestsPage extends StatelessWidget {
       appBar: AppBar(title: const Text('Solicitudes de Amistad')),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
-            .collection('users').doc(myUid).collection('friend_requests').snapshots(),
+            .collection('users')
+            .doc(myUid)
+            .collection('friend_requests')
+            .snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          if (!snapshot.hasData)
+            return const Center(child: CircularProgressIndicator());
           final reqs = snapshot.data!.docs;
 
           if (reqs.isEmpty) {
-            return const Center(child: Text('No tienes solicitudes pendientes'));
+            return const Center(
+              child: Text('No tienes solicitudes pendientes'),
+            );
           }
 
           return ListView.builder(
@@ -268,16 +304,24 @@ class FriendRequestsPage extends StatelessWidget {
               final senderUid = data['fromUid'];
 
               return FutureBuilder<DocumentSnapshot>(
-                future: FirebaseFirestore.instance.collection('users').doc(senderUid).get(),
+                future: FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(senderUid)
+                    .get(),
                 builder: (context, userSnap) {
-                  if (!userSnap.hasData) return const ListTile(title: Text('Cargando...'));
-                  final userData = userSnap.data!.data() as Map<String, dynamic>;
+                  if (!userSnap.hasData)
+                    return const ListTile(title: Text('Cargando...'));
+                  final userData =
+                      userSnap.data!.data() as Map<String, dynamic>;
 
                   return ListTile(
                     leading: CircleAvatar(
                       backgroundImage: userData['photoURL'] != null
-                          ? NetworkImage(userData['photoURL']) : null,
-                      child: userData['photoURL'] == null ? const Icon(Icons.person) : null,
+                          ? NetworkImage(userData['photoURL'])
+                          : null,
+                      child: userData['photoURL'] == null
+                          ? const Icon(Icons.person)
+                          : null,
                     ),
                     title: Text(userData['displayName'] ?? 'Usuario'),
                     trailing: Row(
@@ -288,7 +332,11 @@ class FriendRequestsPage extends StatelessWidget {
                           onPressed: () async {
                             // Rechazar
                             await FirebaseFirestore.instance
-                                .collection('users').doc(myUid).collection('friend_requests').doc(senderUid).delete();
+                                .collection('users')
+                                .doc(myUid)
+                                .collection('friend_requests')
+                                .doc(senderUid)
+                                .delete();
                           },
                         ),
                         IconButton(
@@ -296,23 +344,50 @@ class FriendRequestsPage extends StatelessWidget {
                           onPressed: () async {
                             // Aceptar (Lógica de añadir a contactos mutuamente)
                             final batch = FirebaseFirestore.instance.batch();
-                            final myRef = FirebaseFirestore.instance.collection('users').doc(myUid).collection('contacts').doc(senderUid);
-                            final theirRef = FirebaseFirestore.instance.collection('users').doc(senderUid).collection('contacts').doc(myUid);
-                            final reqRef = FirebaseFirestore.instance.collection('users').doc(myUid).collection('friend_requests').doc(senderUid);
+                            final myRef = FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(myUid)
+                                .collection('contacts')
+                                .doc(senderUid);
+                            final theirRef = FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(senderUid)
+                                .collection('contacts')
+                                .doc(myUid);
+                            final reqRef = FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(myUid)
+                                .collection('friend_requests')
+                                .doc(senderUid);
 
-                            batch.set(myRef, {'uid': senderUid, 'addedAt': FieldValue.serverTimestamp()});
-                            batch.set(theirRef, {'uid': myUid, 'addedAt': FieldValue.serverTimestamp()});
+                            batch.set(myRef, {
+                              'uid': senderUid,
+                              'addedAt': FieldValue.serverTimestamp(),
+                            });
+                            batch.set(theirRef, {
+                              'uid': myUid,
+                              'addedAt': FieldValue.serverTimestamp(),
+                            });
                             batch.delete(reqRef);
 
                             await batch.commit();
-                            if(context.mounted) Navigator.pop(context); // Opcional: Cerrar o quedar
+                            if (context.mounted)
+                              Navigator.pop(
+                                context,
+                              ); // Opcional: Cerrar o quedar
                           },
                         ),
                       ],
                     ),
                     onTap: () {
                       // También puedes ir al perfil desde aquí
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => UserProfilePage(targetUserId: senderUid)));
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              UserProfilePage(targetUserId: senderUid),
+                        ),
+                      );
                     },
                   );
                 },

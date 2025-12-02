@@ -314,7 +314,7 @@ class SelectEventForAttendanceDialog extends StatelessWidget {
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('⚠️ Demasiado lejos'),
+          title: const Text('Advertencia: Demasiado lejos'),
           content: Text(
             'Estás a ${distanceInMeters}m del lugar del evento.\n\n'
             'Debes estar en el lugar (máximo 200m de distancia) para confirmar tu llegada.',

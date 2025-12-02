@@ -25,6 +25,7 @@ class AuthController {
           'createdAt': FieldValue.serverTimestamp(),
           'contacts': [], // Array vacío para agregar amigos después
           'fcmToken': '', // Listo para notificaciones
+          'role': 'user', // Por defecto todos son usuarios normales
         });
       }
     } catch (e) {
@@ -40,8 +41,8 @@ class AuthController {
     try {
       // 1. Autenticación pura de Firebase
       final UserCredential cred = await _auth.signInWithEmailAndPassword(
-          email: email,
-          password: password
+        email: email,
+        password: password,
       );
 
       // 2. VERIFICACIÓN DE REPARACIÓN:
@@ -83,7 +84,8 @@ class AuthController {
     if (emailTrim.isEmpty) return 'El correo es obligatorio.';
     if (!emailRegex.hasMatch(emailTrim)) return 'Formato de correo inválido.';
     if (password.isEmpty) return 'La contraseña es obligatoria.';
-    if (password.length < 6) return 'La contraseña debe tener al menos 6 caracteres.';
+    if (password.length < 6)
+      return 'La contraseña debe tener al menos 6 caracteres.';
 
     try {
       final cred = await _auth.createUserWithEmailAndPassword(
@@ -122,15 +124,18 @@ class AuthController {
   Future<String?> signInWithGoogle() async {
     try {
       await _googleSignIn.initialize(
-        serverClientId: '736317810114-v6bmruruuluns7o1lmn76l3d3pva98i5.apps.googleusercontent.com',
+        serverClientId:
+            '736317810114-v6bmruruuluns7o1lmn76l3d3pva98i5.apps.googleusercontent.com',
       );
 
-      final GoogleSignInAccount? googleUser = await _googleSignIn.authenticate();
+      final GoogleSignInAccount? googleUser = await _googleSignIn
+          .authenticate();
       if (googleUser == null) {
         return 'Inicio de sesión cancelado';
       }
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
       final String? idToken = googleAuth.idToken;
       if (idToken == null) {
         return 'Error: No se pudo obtener el ID Token de Google';
@@ -140,7 +145,9 @@ class AuthController {
         idToken: idToken,
       );
 
-      final UserCredential userCredential = await _auth.signInWithCredential(credential);
+      final UserCredential userCredential = await _auth.signInWithCredential(
+        credential,
+      );
       if (userCredential.user == null) {
         return 'Error: No se pudo completar el inicio de sesión';
       }
@@ -150,7 +157,9 @@ class AuthController {
 
       return null;
     } on FirebaseAuthException catch (e) {
-      debugPrint('FirebaseAuthException en Google Sign-In: ${e.code} - ${e.message}');
+      debugPrint(
+        'FirebaseAuthException en Google Sign-In: ${e.code} - ${e.message}',
+      );
       return e.message ?? 'Error de autenticación con Google';
     } catch (e, st) {
       debugPrint('Error inesperado en Google Sign-In: $e\n$st');

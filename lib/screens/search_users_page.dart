@@ -96,14 +96,14 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
           : _searchResults.isEmpty
           ? _buildEmptyState()
           : ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: _searchResults.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemBuilder: (context, index) {
-          final user = _searchResults[index];
-          return _buildUserResultTile(user);
-        },
-      ),
+              padding: const EdgeInsets.all(16),
+              itemCount: _searchResults.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (context, index) {
+                final user = _searchResults[index];
+                return _buildUserResultTile(user);
+              },
+            ),
     );
   }
 
@@ -144,71 +144,81 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
           Navigator.push(
             context,
             MaterialPageRoute(
-                builder: (_) => UserProfilePage(
-                    targetUserId: uid,
-                    userName: name
-                )
+              builder: (_) =>
+                  UserProfilePage(targetUserId: uid, userName: name),
             ),
           );
         },
         leading: CircleAvatar(
           backgroundImage: photoURL.isNotEmpty ? NetworkImage(photoURL) : null,
-          child: photoURL.isEmpty ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'U') : null,
+          child: photoURL.isEmpty
+              ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'U')
+              : null,
         ),
         title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(email),
 
-        // --- AQUÍ ESTÁ LA LÓGICA DEL BOTÓN ---
+        // Lógica del botón de contacto
         trailing: isAlreadyFriend
             ? const Chip(
-          label: Text('Amigos'),
-          visualDensity: VisualDensity.compact,
-          backgroundColor: Colors.green,
-          labelStyle: TextStyle(color: Colors.white, fontSize: 12),
-        )
+                label: Text('Amigos'),
+                visualDensity: VisualDensity.compact,
+                backgroundColor: Colors.green,
+                labelStyle: TextStyle(color: Colors.white, fontSize: 12),
+              )
             : isRequestSent
             ? const Chip(
-          label: Text('Enviado'),
-          visualDensity: VisualDensity.compact,
-          backgroundColor: Colors.grey,
-          labelStyle: TextStyle(color: Colors.white, fontSize: 12),
-        )
-            : ElevatedButton( // BOTÓN DE AGREGAR
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Theme.of(context).primaryColor, // Color Primario
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            visualDensity: VisualDensity.compact,
-          ),
-          onPressed: () async {
-            // 1. Feedback inmediato visual
-            setState(() {
-              _sentRequests.add(uid);
-            });
+                label: Text('Enviado'),
+                visualDensity: VisualDensity.compact,
+                backgroundColor: Colors.grey,
+                labelStyle: TextStyle(color: Colors.white, fontSize: 12),
+              )
+            : ElevatedButton(
+                // BOTÓN DE AGREGAR
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(
+                    context,
+                  ).primaryColor, // Color Primario
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  visualDensity: VisualDensity.compact,
+                ),
+                onPressed: () async {
+                  // 1. Feedback inmediato visual
+                  setState(() {
+                    _sentRequests.add(uid);
+                  });
 
-            // 2. Llamada a la base de datos
-            try {
-              await _contactController.sendFriendRequest(uid);
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Solicitud enviada a $name')),
-                );
-              }
-            } catch (e) {
-              // Si falla, revertimos el estado visual
-              if (mounted) {
-                setState(() {
-                  _sentRequests.remove(uid);
-                });
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Error al enviar solicitud')),
-                );
-              }
-            }
-          },
-          child: const Text('Agregar'),
-        ),
+                  // 2. Llamada a la base de datos
+                  try {
+                    await _contactController.sendFriendRequest(uid);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Solicitud enviada a $name')),
+                      );
+                    }
+                  } catch (e) {
+                    // Si falla, revertimos el estado visual
+                    if (mounted) {
+                      setState(() {
+                        _sentRequests.remove(uid);
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Error al enviar solicitud'),
+                        ),
+                      );
+                    }
+                  }
+                },
+                child: const Text('Agregar'),
+              ),
       ),
     );
   }

@@ -204,7 +204,7 @@ class _InviteFriendsDialogState extends State<InviteFriendsDialog> {
     );
   }
 
-  // ✅ Método para cargar información de los contactos
+  // Método para cargar información de los contactos
   Future<List<Map<String, dynamic>>> _loadContactsInfo(
     List<String> contactIds,
   ) async {
@@ -236,7 +236,7 @@ class _InviteFriendsDialogState extends State<InviteFriendsDialog> {
     setState(() => _justInvited.add(friendUid));
 
     try {
-      // ✅ SOLO agregamos al array 'invited', NO a 'participants'
+      // SOLO agregamos al array 'invited', NO a 'participants'
       await FirebaseFirestore.instance
           .collection('events')
           .doc(widget.eventId)

@@ -678,7 +678,7 @@ class _HomePageState extends State<HomePage> {
 
                                   const SizedBox(height: 20),
 
-                                  // 📅 Eventos de Hoy
+                                  // Eventos de Hoy
                                   _buildTodayEvents(u.uid, colorScheme),
 
                                   const SizedBox(height: 12),
@@ -798,7 +798,7 @@ class _HomePageState extends State<HomePage> {
 
                                   const SizedBox(height: 12),
 
-                                  // 👥 Invitaciones de Contactos Pendientes
+                                  // Invitaciones de Contactos Pendientes
                                   StreamBuilder<QuerySnapshot>(
                                     stream: FirebaseFirestore.instance
                                         .collection('contactRequests')
@@ -905,7 +905,7 @@ class _HomePageState extends State<HomePage> {
 
                                   const SizedBox(height: 12),
 
-                                  // ✅ Últimos Eventos Asistidos
+                                  // Últimos Eventos Asistidos
                                   _buildRecentAttendedEvents(
                                     u.uid,
                                     colorScheme,
@@ -1028,7 +1028,7 @@ class _HomePageState extends State<HomePage> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    // --- CAMBIO CLAVE: Usamos getNearbyEvents para una consulta más eficiente ---
+    // Usamos getNearbyEvents para una consulta más eficiente
     return StreamBuilder<QuerySnapshot>(
       stream: _eventCtrl.getNearbyEvents(
         userLat: _myPos!.latitude,
@@ -1128,7 +1128,7 @@ class _HomePageState extends State<HomePage> {
     return markers;
   }
 
-  // --- MÉTODOS PARA TRACKING DE RUTA "EN CAMINO" ---
+  // MÉTODOS PARA TRACKING DE RUTA "EN CAMINO"
 
   // Verificar si hay eventos marcados como "en camino" al iniciar
   Future<void> _checkAndStartRouteTracking() async {

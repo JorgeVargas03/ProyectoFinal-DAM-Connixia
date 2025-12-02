@@ -1,0 +1,177 @@
+// REGLAS DE SEGURIDAD SUGERIDAS PARA FIRESTORE
+// Copia estas reglas en Firebase Console -> Firestore Database -> Rules
+// Estas reglas protegen tu base de datos y validan permisos de administrador
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===== FUNCIONES AUXILIARES =====
+    
+    // Verificar si el usuario está autenticado
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Verificar si el usuario es el dueño del recurso
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    // Verificar si el usuario es administrador
+    function isAdmin() {
+      return isSignedIn() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Verificar si el usuario está suspendido
+    function isNotSuspended() {
+      let userData = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return !('suspended' in userData) || userData.suspended == false;
+    }
+    
+    // ===== COLECCIÓN: USUARIOS =====
+    match /users/{userId} {
+      // Lectura: Todos los usuarios autenticados pueden ver perfiles
+      allow read: if isSignedIn();
+      
+      // Crear: Solo al registrarse (el campo 'role' debe ser 'user')
+      allow create: if isSignedIn() && 
+                      isOwner(userId) &&
+                      request.resource.data.role == 'user';
+      
+      // Actualizar perfil: Solo el dueño o un admin
+      // Los usuarios NO pueden cambiar su propio rol
+      allow update: if isSignedIn() && (
+        // El usuario puede actualizar su perfil (excepto rol y suspensión)
+        (isOwner(userId) && 
+         request.resource.data.role == resource.data.role &&
+         request.resource.data.get('suspended', false) == resource.data.get('suspended', false)) ||
+        // O es un admin que puede cambiar cualquier cosa
+        isAdmin()
+      );
+      
+      // Eliminar: Solo admins
+      allow delete: if isAdmin();
+      
+      // Subcolecciones de usuarios
+      match /friend_requests/{requestId} {
+        allow read, write: if isSignedIn() && isOwner(userId);
+      }
+      
+      match /contacts/{contactId} {
+        allow read, write: if isSignedIn() && isOwner(userId);
+      }
+      
+      match /eventChats/{chatId} {
+        allow read, write: if isSignedIn() && isOwner(userId);
+      }
+    }
+    
+    // ===== COLECCIÓN: EVENTOS =====
+    match /events/{eventId} {
+      // Lectura: Todos los usuarios autenticados
+      // En tu app ya filtras por privacidad y contactos
+      allow read: if isSignedIn();
+      
+      // Crear: Usuarios autenticados y no suspendidos
+      allow create: if isSignedIn() && 
+                      isNotSuspended() &&
+                      request.resource.data.creatorId == request.auth.uid;
+      
+      // Actualizar: El creador o un admin
+      allow update: if isSignedIn() && (
+        isOwner(resource.data.creatorId) ||
+        isAdmin()
+      );
+      
+      // Eliminar: El creador o un admin
+      allow delete: if isSignedIn() && (
+        isOwner(resource.data.creatorId) ||
+        isAdmin()
+      );
+      
+      // Subcolecciones de eventos
+      match /messages/{messageId} {
+        // Lectura: Participantes del evento
+        allow read: if isSignedIn() && 
+                      request.auth.uid in get(/databases/$(database)/documents/events/$(eventId)).data.participants;
+        
+        // Crear: Participantes del evento
+        allow create: if isSignedIn() && 
+                        request.auth.uid in get(/databases/$(database)/documents/events/$(eventId)).data.participants &&
+                        request.resource.data.senderId == request.auth.uid;
+        
+        // Actualizar/Eliminar: Solo el remitente o admin
+        allow update, delete: if isSignedIn() && (
+          isOwner(resource.data.senderId) ||
+          isAdmin()
+        );
+      }
+      
+      match /attendance/{userId} {
+        allow read: if isSignedIn();
+        allow write: if isSignedIn() && (
+          isOwner(userId) ||
+          isAdmin()
+        );
+      }
+      
+      match /onTheWay/{userId} {
+        allow read: if isSignedIn();
+        allow write: if isSignedIn() && isOwner(userId);
+      }
+    }
+    
+    // ===== COLECCIÓN: NOTIFICACIONES =====
+    match /notifications/{notificationId} {
+      // Lectura: Solo el destinatario
+      allow read: if isSignedIn() && isOwner(resource.data.recipientId);
+      
+      // Crear: Cualquier usuario autenticado (para enviar notificaciones)
+      allow create: if isSignedIn();
+      
+      // Actualizar: El destinatario (para marcar como leída) o admin
+      allow update: if isSignedIn() && (
+        isOwner(resource.data.recipientId) ||
+        isAdmin()
+      );
+      
+      // Eliminar: El destinatario o admin
+      allow delete: if isSignedIn() && (
+        isOwner(resource.data.recipientId) ||
+        isAdmin()
+      );
+    }
+    
+    // ===== REGLA POR DEFECTO =====
+    // Denegar todo lo que no coincida con las reglas anteriores
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+// ===== NOTAS IMPORTANTES =====
+// 1. Estas reglas son un punto de partida. Ajústalas según tus necesidades.
+// 2. Prueba las reglas en el simulador de Firebase antes de publicarlas.
+// 3. Las reglas de Firestore NO son código ejecutable, son declarativas.
+// 4. Para operaciones complejas, considera usar Cloud Functions.
+// 5. Las consultas deben cumplir con las reglas (usa where() apropiadamente).
+
+// ===== CÓMO APLICAR ESTAS REGLAS =====
+// 1. Ve a Firebase Console: https://console.firebase.google.com/
+// 2. Selecciona tu proyecto
+// 3. Ve a "Firestore Database"
+// 4. Haz clic en la pestaña "Reglas"
+// 5. Copia y pega este código
+// 6. Haz clic en "Publicar"
+// 7. Espera a que se apliquen (puede tardar unos minutos)
+
+// ===== PRUEBAS SUGERIDAS =====
+// Usa el simulador de reglas en Firebase Console para probar:
+// - Un usuario normal puede leer eventos: ✅
+// - Un usuario normal NO puede cambiar su rol: ❌
+// - Un admin puede eliminar eventos: ✅
+// - Un usuario suspendido NO puede crear eventos: ❌
+// - Un usuario NO puede ver notificaciones de otros: ❌

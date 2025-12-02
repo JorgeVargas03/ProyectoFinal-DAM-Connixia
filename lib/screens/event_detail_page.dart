@@ -116,7 +116,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
           final lat = location?['lat'] as double?;
           final lng = location?['lng'] as double?;
 
-          // --- DETECTAR SI ES PASADO ---
+          // Detectar si es pasado
           final now = DateTime.now();
           final isPast = date != null && date.toDate().isBefore(now);
 
@@ -208,14 +208,14 @@ class _EventDetailPageState extends State<EventDetailPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // --- SECCIÓN 1: EL MAPA ---
+                  // SECCIÓN 1: EL MAPA
                   _buildMapView(lat, lng, address),
                   Padding(
                     padding: const EdgeInsets.all(20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // --- SECCIÓN 2: ENCABEZADO ---
+                        // SECCIÓN 2: ENCABEZADO
                         Text(
                           title,
                           style: Theme.of(context).textTheme.headlineMedium
@@ -241,7 +241,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                         ),
                         const SizedBox(height: 24),
 
-                        // --- SECCIÓN 3: UBICACIÓN TEXTUAL ---
+                        // SECCIÓN 3: UBICACIÓN TEXTUAL
                         const Text(
                           'Ubicación:',
                           style: TextStyle(fontWeight: FontWeight.bold),
@@ -261,7 +261,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                         ),
                         const Divider(height: 40),
 
-                        // --- SECCIÓN 4: DESCRIPCIÓN ---
+                        // SECCIÓN 4: DESCRIPCIÓN
                         if (description.isNotEmpty) ...[
                           const Text(
                             'Acerca del evento:',
@@ -272,7 +272,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                           const Divider(height: 40),
                         ],
 
-                        // --- SECCIÓN 5: PARTICIPANTES ---
+                        // SECCIÓN 5: PARTICIPANTES
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -634,7 +634,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
     );
   }
 
-  // --- WIDGET DEL MAPA REAL ---
+  // Widget del mapa real
   Widget _buildMapView(double? lat, double? lng, String address) {
     if (lat == null || lng == null) {
       return Container(
@@ -710,7 +710,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
     }
   }
 
-  // --- MARCAR/DESMARCAR "EN CAMINO" ---
+  // Marcar/desmarcar "en camino"
   Future<void> _toggleOnTheWay(double eventLat, double eventLng) async {
     if (_currentUser == null) return;
 
@@ -753,7 +753,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
     }
   }
 
-  // --- LÓGICA: EDITAR EVENTO (CON FECHA Y UBICACIÓN) ---
+  // Lógica: editar evento (con fecha y ubicación)
   void _showEditDialog(
     BuildContext context,
     String currentTitle,
@@ -824,7 +824,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                     ),
                     const SizedBox(height: 20),
 
-                    // --- SELECTOR DE FECHA Y HORA ---
+                    // Selector de fecha y hora
                     InkWell(
                       onTap: () async {
                         // 1. Fecha
@@ -902,7 +902,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
                         child: Text(
-                          '⚠️ La fecha ya pasó',
+                          'Advertencia: La fecha ya pasó',
                           style: TextStyle(
                             color: Colors.orange[700],
                             fontSize: 12,
@@ -912,7 +912,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
 
                     const SizedBox(height: 20),
 
-                    // --- SELECTOR DE UBICACIÓN ---
+                    // Selector de ubicación
                     const Text(
                       'Ubicación:',
                       style: TextStyle(fontWeight: FontWeight.bold),
@@ -987,7 +987,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
 
                     const SizedBox(height: 20),
 
-                    // --- SELECTOR DE LÍMITE DE PARTICIPANTES ---
+                    // Selector de límite de participantes
                     const Text(
                       'Límite de participantes',
                       style: TextStyle(fontWeight: FontWeight.bold),
@@ -1124,7 +1124,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
                         child: Text(
-                          '⚠️ El límite está cerca del número actual de participantes',
+                          'Advertencia: El límite está cerca del número actual de participantes',
                           style: TextStyle(
                             color: Colors.orange[700],
                             fontSize: 12,
@@ -1221,7 +1221,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
     );
   }
 
-  // --- LÓGICA: BORRAR EVENTO ---
+  // Lógica: borrar evento
   Future<void> _confirmDelete(BuildContext context, String creatorId) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -1247,7 +1247,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
     }
   }
 
-  // --- LÓGICA: SALIR DEL EVENTO ---
+  // Lógica: salir del evento
   Future<void> _confirmLeave(BuildContext context) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -1273,7 +1273,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
     }
   }
 
-  // --- LÓGICA: UNIRSE AL EVENTO ---
+  // Lógica: unirse al evento
   Future<void> _confirmJoin(BuildContext context, String eventId) async {
     final confirm = await showDialog<bool>(
       context: context,

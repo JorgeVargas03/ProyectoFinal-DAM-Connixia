@@ -450,7 +450,7 @@ class _ExploreEventsPageState extends State<ExploreEventsPage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('⚠️ Evento lejano'),
+        title: const Text('Advertencia: Evento lejano'),
         content: const Text(
           'Este evento está a más de 100 km de distancia. '
           '¿Seguro que deseas unirte?',

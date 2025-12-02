@@ -7,10 +7,12 @@ import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'dart:io';
 import '../controllers/auth_controller.dart';
+import '../admin/controllers/admin_controller.dart';
 import '../services/image_upload_service.dart';
 import '../providers/theme_provider.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'attendance_history_page.dart';
+import '../admin/screens/admin_gate_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -22,6 +24,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage>
     with SingleTickerProviderStateMixin {
   final _authController = AuthController();
+  final _adminController = AdminController();
   final _displayNameCtrl = TextEditingController();
   final _currentPassCtrl = TextEditingController();
   final _newPassCtrl = TextEditingController();
@@ -33,11 +36,12 @@ class _ProfilePageState extends State<ProfilePage>
   bool _isUpdatingImage = false;
   bool _isSaving = false;
   bool _isChangingPassword = false;
+  bool _isAdmin = false;
 
   late TabController _tabController;
   bool _isModalOpen = false;
 
-  // Lista de colores :D
+  // Lista de colores disponibles
   final List<Color> _availableColors = [
     const Color(0xFF5C6BC0), // Indigo Suave
     const Color(0xFF42A5F5), // Azul Calmado
@@ -60,6 +64,7 @@ class _ProfilePageState extends State<ProfilePage>
   void initState() {
     super.initState();
     _loadUser();
+    _checkAdminStatus();
     _tabController = TabController(length: 3, vsync: this);
   }
 
@@ -68,6 +73,13 @@ class _ProfilePageState extends State<ProfilePage>
       _user = FirebaseAuth.instance.currentUser;
       _displayNameCtrl.text = _user?.displayName ?? '';
     });
+  }
+
+  Future<void> _checkAdminStatus() async {
+    final isAdmin = await _adminController.isAdmin();
+    if (mounted) {
+      setState(() => _isAdmin = isAdmin);
+    }
   }
 
   @override
@@ -231,15 +243,15 @@ class _ProfilePageState extends State<ProfilePage>
       final fileSize = await imageFile.length();
       final fileSizeMB = fileSize / (1024 * 1024);
 
-      debugPrint('📸 Tamaño original: ${fileSizeMB.toStringAsFixed(2)} MB');
+      debugPrint('Tamaño original: ${fileSizeMB.toStringAsFixed(2)} MB');
 
       // Si el archivo es menor a 10 MB, retornarlo sin comprimir
       if (fileSize <= _maxFileSizeBytes) {
-        debugPrint('✅ Imagen dentro del límite, no se comprime');
+        debugPrint('[OK] Imagen dentro del límite, no se comprime');
         return imageFile;
       }
 
-      debugPrint('⚠️ Imagen excede 10 MB, comprimiendo...');
+      debugPrint('[WARN] Imagen excede 10 MB, comprimiendo...');
 
       // Comprimir la imagen
       final filePath = imageFile.absolute.path;
@@ -256,23 +268,23 @@ class _ProfilePageState extends State<ProfilePage>
       );
 
       if (result == null) {
-        debugPrint('❌ Error al comprimir, usando imagen original');
+        debugPrint('[ERROR] Error al comprimir, usando imagen original');
         return imageFile;
       }
 
       final compressedSize = await result.length();
       final compressedSizeMB = compressedSize / (1024 * 1024);
-      debugPrint('✅ Comprimida: ${compressedSizeMB.toStringAsFixed(2)} MB');
+      debugPrint('[OK] Comprimida: ${compressedSizeMB.toStringAsFixed(2)} MB');
 
       // Si después de comprimir sigue siendo muy grande, comprimir más agresivamente
       if (compressedSize > _maxFileSizeBytes) {
-        debugPrint('⚠️ Aún es grande, comprimiendo más...');
+        debugPrint('[WARN] Aún es grande, comprimiendo más...');
         return await _compressAggressively(File(result.path));
       }
 
       return File(result.path);
     } catch (e) {
-      debugPrint('❌ Error en compresión: $e');
+      debugPrint('[ERROR] Error en compresión: $e');
       return imageFile; // Retornar original si hay error
     }
   }
@@ -296,14 +308,14 @@ class _ProfilePageState extends State<ProfilePage>
       if (result != null) {
         final finalSize = await result.length();
         debugPrint(
-          '✅ Compresión agresiva: ${(finalSize / (1024 * 1024)).toStringAsFixed(2)} MB',
+          '[OK] Compresión agresiva: ${(finalSize / (1024 * 1024)).toStringAsFixed(2)} MB',
         );
         return File(result.path);
       }
 
       return imageFile;
     } catch (e) {
-      debugPrint('❌ Error en compresión agresiva: $e');
+      debugPrint('[ERROR] Error en compresión agresiva: $e');
       return imageFile;
     }
   }
@@ -597,6 +609,10 @@ class _ProfilePageState extends State<ProfilePage>
           const SizedBox(height: 16),
           _buildInfoCard(theme),
           const SizedBox(height: 24),
+          if (_isAdmin) ...[
+            _buildAdminAccessButton(),
+            const SizedBox(height: 16),
+          ],
           _buildSignOutButton(),
         ],
       ),
@@ -1234,6 +1250,29 @@ class _ProfilePageState extends State<ProfilePage>
           },
         );
       },
+    );
+  }
+
+  Widget _buildAdminAccessButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: () {
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const AdminGatePage()));
+        },
+        icon: const Icon(Icons.admin_panel_settings),
+        label: const Text('Panel de Administración'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.orange.shade700,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+        ),
+      ),
     );
   }
 

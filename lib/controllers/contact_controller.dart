@@ -7,7 +7,7 @@ class ContactController {
 
   String? get currentUid => _auth.currentUser?.uid;
 
-  // --- OBTENER CONTACTOS ---
+  // OBTENER CONTACTOS
   Stream<List<Map<String, dynamic>>> getUserContactsStream() {
     if (currentUid == null) return const Stream.empty();
 
@@ -17,16 +17,16 @@ class ContactController {
         .collection('contacts')
         .snapshots() // <--- Esto hace la magia del auto-refresh
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        // Aseguramos que el UID venga en el mapa, si no está, usamos el ID del documento
-        data['uid'] = data['uid'] ?? doc.id;
-        return data;
-      }).toList();
-    });
+          return snapshot.docs.map((doc) {
+            final data = doc.data();
+            // Aseguramos que el UID venga en el mapa, si no está, usamos el ID del documento
+            data['uid'] = data['uid'] ?? doc.id;
+            return data;
+          }).toList();
+        });
   }
 
-  // --- ELIMINAR CONTACTO ---
+  // ELIMINAR CONTACTO
   Future<void> deleteContact(String targetUid) async {
     if (currentUid == null) return;
 
@@ -46,13 +46,12 @@ class ContactController {
           .collection('contacts')
           .doc(currentUid)
           .delete();
-
     } catch (e) {
       print('Error al eliminar contacto: $e');
     }
   }
 
-  // --- ALTERNAR FAVORITO (TOGGLE) ---
+  // ALTERNAR FAVORITO (TOGGLE)
   Future<void> toggleFavorite(String targetUid) async {
     if (currentUid == null) return;
 
@@ -73,7 +72,7 @@ class ContactController {
     }
   }
 
-  // --- BUSCAR USUARIOS POR NOMBRE ---
+  // BUSCAR USUARIOS POR NOMBRE
   Future<List<Map<String, dynamic>>> searchUsersByName(String query) async {
     if (query.isEmpty) return [];
 
@@ -101,7 +100,7 @@ class ContactController {
     }
   }
 
-  // --- VERIFICAR SI ES CONTACTO ---
+  // VERIFICAR SI ES CONTACTO
   Future<bool> isFriend(String targetUid) async {
     if (currentUid == null) return false;
 
@@ -126,10 +125,10 @@ class ContactController {
           .collection('friend_requests')
           .doc(currentUid)
           .set({
-        'fromUid': currentUid,
-        'timestamp': FieldValue.serverTimestamp(),
-        'status': 'pending'
-      });
+            'fromUid': currentUid,
+            'timestamp': FieldValue.serverTimestamp(),
+            'status': 'pending',
+          });
     } catch (e) {
       print('Error enviando solicitud: $e');
       throw e; // Relanzamos para manejarlo en la UI si queremos
