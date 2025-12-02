@@ -10,6 +10,7 @@ import '../controllers/auth_controller.dart';
 import '../services/image_upload_service.dart';
 import '../providers/theme_provider.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'attendance_history_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -184,7 +185,7 @@ class _ProfilePageState extends State<ProfilePage>
       if (pickedFile == null) return;
 
       final imageFile = File(pickedFile.path);
-      
+
       // 1. Recortar
       final croppedImage = await _cropImage(imageFile);
       if (croppedImage == null) return;
@@ -229,7 +230,7 @@ class _ProfilePageState extends State<ProfilePage>
     try {
       final fileSize = await imageFile.length();
       final fileSizeMB = fileSize / (1024 * 1024);
-      
+
       debugPrint('📸 Tamaño original: ${fileSizeMB.toStringAsFixed(2)} MB');
 
       // Si el archivo es menor a 10 MB, retornarlo sin comprimir
@@ -294,7 +295,9 @@ class _ProfilePageState extends State<ProfilePage>
 
       if (result != null) {
         final finalSize = await result.length();
-        debugPrint('✅ Compresión agresiva: ${(finalSize / (1024 * 1024)).toStringAsFixed(2)} MB');
+        debugPrint(
+          '✅ Compresión agresiva: ${(finalSize / (1024 * 1024)).toStringAsFixed(2)} MB',
+        );
         return File(result.path);
       }
 
@@ -416,7 +419,7 @@ class _ProfilePageState extends State<ProfilePage>
     if (_user?.photoURL == null || _user!.photoURL!.isEmpty) return;
 
     setState(() => _isModalOpen = true);
-    
+
     showDialog(
       context: context,
       barrierColor: Colors.black87,
@@ -442,7 +445,7 @@ class _ProfilePageState extends State<ProfilePage>
                     _user!.photoURL!,
                     fit: BoxFit.contain,
                     errorBuilder: (_, __, ___) =>
-                    const Icon(Icons.error, color: Colors.white, size: 64),
+                        const Icon(Icons.error, color: Colors.white, size: 64),
                   ),
                 ),
               ),
@@ -554,7 +557,8 @@ class _ProfilePageState extends State<ProfilePage>
         //Solo ocultar el teclado si NO hay un modal abierto
         if (!_isModalOpen) {
           FocusScope.of(context).unfocus();
-        }},
+        }
+      },
       behavior: HitTestBehavior.opaque,
       child: Scaffold(
         appBar: AppBar(
@@ -582,7 +586,6 @@ class _ProfilePageState extends State<ProfilePage>
         ),
       ),
     );
-
   }
 
   Widget _buildProfileTab(bool hasPhoto, ThemeData theme) {
@@ -633,13 +636,13 @@ class _ProfilePageState extends State<ProfilePage>
                         : null,
                     child: !hasPhoto
                         ? Text(
-                      _userInitial(),
-                      style: TextStyle(
-                        fontSize: 48,
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.primary,
-                      ),
-                    )
+                            _userInitial(),
+                            style: TextStyle(
+                              fontSize: 48,
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.primary,
+                            ),
+                          )
                         : null,
                   ),
                 ),
@@ -731,6 +734,29 @@ class _ProfilePageState extends State<ProfilePage>
                 ),
               ],
             ),
+            const SizedBox(height: 16),
+            // --- BOTÓN HISTORIAL DE ASISTENCIA ---
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const AttendanceHistoryPage(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.check_circle_outline),
+                label: const Text('Ver historial de asistencia'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -738,11 +764,11 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   Widget _buildStatItem(
-      IconData icon,
-      String label,
-      String value,
-      ThemeData theme,
-      ) {
+    IconData icon,
+    String label,
+    String value,
+    ThemeData theme,
+  ) {
     return Column(
       children: [
         Icon(icon, color: theme.colorScheme.primary, size: 28),
@@ -791,18 +817,18 @@ class _ProfilePageState extends State<ProfilePage>
               IgnorePointer(
                 ignoring: _isModalOpen,
                 child: TextFormField(
-                controller: _displayNameCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Nombre visible',
-                  prefixIcon: const Icon(Icons.badge),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                  controller: _displayNameCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Nombre visible',
+                    prefixIcon: const Icon(Icons.badge),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Ingresa un nombre'
+                      : null,
                 ),
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? 'Ingresa un nombre'
-                    : null,
-              ),
               ),
               const SizedBox(height: 16),
               SizedBox(
@@ -811,13 +837,13 @@ class _ProfilePageState extends State<ProfilePage>
                   onPressed: _isSaving ? null : _saveProfile,
                   icon: _isSaving
                       ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
                       : const Icon(Icons.save),
                   label: const Text('Guardar cambios'),
                   style: ElevatedButton.styleFrom(
@@ -897,13 +923,13 @@ class _ProfilePageState extends State<ProfilePage>
                         onPressed: _isChangingPassword ? null : _changePassword,
                         icon: _isChangingPassword
                             ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
                             : const Icon(Icons.check),
                         label: const Text('Actualizar contraseña'),
                         style: ElevatedButton.styleFrom(
@@ -1063,7 +1089,7 @@ class _ProfilePageState extends State<ProfilePage>
                 Text(
                   'Color de énfasis',
                   style: theme.textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w600
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -1074,19 +1100,19 @@ class _ProfilePageState extends State<ProfilePage>
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                        color: themeProvider.seedColor,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.grey.withOpacity(0.5),
-                          width: 1,
+                      color: themeProvider.seedColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.grey.withOpacity(0.5),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          )
-                        ]
+                      ],
                     ),
                   ),
                   title: const Text('Cambiar color del tema'),
@@ -1103,7 +1129,10 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   // --- DIÁLOGO PARA SELECCIONAR COLOR ---
-  void _showColorPickerDialog(BuildContext context, ThemeProvider themeProvider) {
+  void _showColorPickerDialog(
+    BuildContext context,
+    ThemeProvider themeProvider,
+  ) {
     // Variable para guardar el color seleccionado TEMPORALMENTE dentro del diálogo
     Color tempSelectedColor = themeProvider.seedColor;
 
@@ -1140,11 +1169,13 @@ class _ProfilePageState extends State<ProfilePage>
                           shape: BoxShape.circle,
                           border: isSelected
                               ? Border.all(
-                            color: Theme.of(context).brightness == Brightness.dark
-                                ? Colors.white
-                                : Colors.black87,
-                            width: 3.0,
-                          )
+                                  color:
+                                      Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? Colors.white
+                                      : Colors.black87,
+                                  width: 3.0,
+                                )
                               : null,
                           boxShadow: [
                             BoxShadow(
@@ -1155,7 +1186,11 @@ class _ProfilePageState extends State<ProfilePage>
                           ],
                         ),
                         child: isSelected
-                            ? const Icon(Icons.check, color: Colors.white, size: 20)
+                            ? const Icon(
+                                Icons.check,
+                                color: Colors.white,
+                                size: 20,
+                              )
                             : null,
                       ),
                     );
@@ -1181,7 +1216,8 @@ class _ProfilePageState extends State<ProfilePage>
                               const Text('Tema actualizado correctamente'),
                             ],
                           ),
-                          backgroundColor: tempSelectedColor, // Usamos el color elegido
+                          backgroundColor:
+                              tempSelectedColor, // Usamos el color elegido
                           duration: const Duration(seconds: 2),
                           behavior: SnackBarBehavior.floating,
                           shape: RoundedRectangleBorder(
@@ -1200,6 +1236,7 @@ class _ProfilePageState extends State<ProfilePage>
       },
     );
   }
+
   Widget _buildSignOutButton() {
     return SizedBox(
       width: double.infinity,
