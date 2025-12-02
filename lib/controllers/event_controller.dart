@@ -1,5 +1,6 @@
 import 'dart:async';
-import 'package:cloud_firestore/cloud_firestore.dart';import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:math' show cos, pi, sin, atan2, sqrt;
 import '../services/notification_service.dart';
@@ -62,34 +63,45 @@ class EventController {
   }
 
   // --- LEER TODOS LOS EVENTOS VISIBLES (CORREGIDO) ---
-  // Aplica el filtrado de semiprivados en el cliente sin cambiar el tipo de retorno.
+  // Aplica el filtrado de semiprivados y privados en el cliente.
+  // Públicos: todos lo ven
+  // Semiprivados: solo contactos del creador
+  // Privados: solo el creador (no se muestran aquí para otros usuarios)
   Stream<QuerySnapshot> getAllVisibleEvents() {
     if (currentUid == null) return const Stream.empty();
     final controller = StreamController<QuerySnapshot>();
 
-    // Escuchamos el stream original de Firestore
+    // Escuchamos el stream original de Firestore (todos los eventos activos)
     _db
         .collection('events')
         .where('status', isEqualTo: 'active')
-        .where('privacy', whereIn: ['public', 'semi-private'])
         .orderBy('date', descending: false)
         .snapshots()
-        .listen((snapshot) async {
-      final myContacts = await _getContactIds();
-      final filteredDocs = _filterVisibleEvents(snapshot.docs, myContacts);
+        .listen(
+          (snapshot) async {
+            final myContacts = await _getContactIds();
+            final filteredDocs = _filterVisibleEvents(
+              snapshot.docs,
+              myContacts,
+            );
 
-      // Creamos un nuevo QuerySnapshot "falso" con los documentos filtrados
-      final newSnapshot = _createFakeQuerySnapshot(filteredDocs, snapshot.metadata);
-      controller.add(newSnapshot);
-    }, onError: (error) {
-      controller.addError(error);
-    });
+            // Creamos un nuevo QuerySnapshot "falso" con los documentos filtrados
+            final newSnapshot = _createFakeQuerySnapshot(
+              filteredDocs,
+              snapshot.metadata,
+            );
+            controller.add(newSnapshot);
+          },
+          onError: (error) {
+            controller.addError(error);
+          },
+        );
 
     return controller.stream;
   }
 
   // --- LEER EVENTOS VISIBLES CERCANOS (CORREGIDO) ---
-  // Aplica el filtrado de semiprivados en el cliente sin cambiar el tipo de retorno.
+  // Aplica el filtrado de semiprivados y privados en el cliente.
   Stream<QuerySnapshot> getNearbyEvents({
     required double userLat,
     required double userLng,
@@ -101,26 +113,34 @@ class EventController {
     final latDelta = radiusInKm / 111.0;
     final lngDelta = radiusInKm / (111.0 * cos(userLat * pi / 180));
 
-    // Escuchamos el stream original de Firestore
+    // Escuchamos el stream original de Firestore (todos los eventos activos en el área)
     _db
         .collection('events')
         .where('status', isEqualTo: 'active')
-        .where('privacy', whereIn: ['public', 'semi-private'])
         .where('location.lat', isGreaterThan: userLat - latDelta)
         .where('location.lat', isLessThan: userLat + latDelta)
         .orderBy('location.lat')
         .orderBy('date', descending: false)
         .snapshots()
-        .listen((snapshot) async {
-      final myContacts = await _getContactIds();
-      final filteredDocs = _filterVisibleEvents(snapshot.docs, myContacts);
+        .listen(
+          (snapshot) async {
+            final myContacts = await _getContactIds();
+            final filteredDocs = _filterVisibleEvents(
+              snapshot.docs,
+              myContacts,
+            );
 
-      // Creamos un nuevo QuerySnapshot "falso" con los documentos filtrados
-      final newSnapshot = _createFakeQuerySnapshot(filteredDocs, snapshot.metadata);
-      controller.add(newSnapshot);
-    }, onError: (error) {
-      controller.addError(error);
-    });
+            // Creamos un nuevo QuerySnapshot "falso" con los documentos filtrados
+            final newSnapshot = _createFakeQuerySnapshot(
+              filteredDocs,
+              snapshot.metadata,
+            );
+            controller.add(newSnapshot);
+          },
+          onError: (error) {
+            controller.addError(error);
+          },
+        );
 
     return controller.stream;
   }
@@ -160,20 +180,30 @@ class EventController {
 
   // --- BORRAR (DELETE) (Sin cambios) ---
   Future<String?> deleteEvent(String eventId, String creatorId) async {
-    if (currentUid != creatorId) return 'No tienes permiso para borrar este evento';
+    if (currentUid != creatorId)
+      return 'No tienes permiso para borrar este evento';
     try {
       await _db.collection('events').doc(eventId).delete();
       return null;
-    } catch (e) { return 'Error al borrar evento'; }
+    } catch (e) {
+      return 'Error al borrar evento';
+    }
   }
 
   // --- EDITAR (UPDATE) (Sin cambios) ---
-  Future<String?> updateEvent(String eventId, String creatorId, Map<String, dynamic> data) async {
-    if (currentUid != creatorId) return 'No tienes permiso para editar este evento';
+  Future<String?> updateEvent(
+    String eventId,
+    String creatorId,
+    Map<String, dynamic> data,
+  ) async {
+    if (currentUid != creatorId)
+      return 'No tienes permiso para editar este evento';
     try {
       await _db.collection('events').doc(eventId).update(data);
       return null;
-    } catch (e) { return 'Error al actualizar evento'; }
+    } catch (e) {
+      return 'Error al actualizar evento';
+    }
   }
 
   // --- SALIRSE (LEAVE) (Sin cambios) ---
@@ -181,13 +211,15 @@ class EventController {
     if (currentUid == null) return 'Error de sesión';
     try {
       await _db.collection('events').doc(eventId).update({
-        'participants': FieldValue.arrayRemove([currentUid])
+        'participants': FieldValue.arrayRemove([currentUid]),
       });
       return null;
-    } catch (e) { return 'Error al salir del evento'; }
+    } catch (e) {
+      return 'Error al salir del evento';
+    }
   }
 
-  // --- UNIRSE (JOIN) (Sin cambios, ya era correcto) ---
+  // --- UNIRSE (JOIN) (CORREGIDO) ---
   Future<String?> joinEvent(String eventId) async {
     if (currentUid == null) return 'Error de sesión';
     try {
@@ -198,25 +230,52 @@ class EventController {
       final data = eventDoc.data() as Map<String, dynamic>;
       final creatorId = data['creatorId'];
       final participants = List.from(data['participants'] ?? []);
+      final invited = List.from(data['invited'] ?? []);
       final privacy = data['privacy'] ?? 'public';
 
       if (currentUid == creatorId) return 'No puedes unirte a tu propio evento';
-      if (participants.contains(currentUid)) return 'Ya estás participando en este evento';
+      if (participants.contains(currentUid))
+        return 'Ya estás participando en este evento';
 
+      // Verificar permisos según privacidad
       switch (privacy) {
-        case 'public': break;
-        case 'semi-private':
-          final creatorDoc = await _db.collection('users').doc(creatorId).get();
-          if (!creatorDoc.exists) return 'Error: No se pudo verificar la privacidad del evento.';
-          final creatorContacts = List<String>.from(creatorDoc.data()?['contacts'] ?? []);
-          if (!creatorContacts.contains(currentUid)) return 'Este es un evento semiprivado, solo para contactos del creador.';
+        case 'public':
+          // Público: cualquiera puede unirse
           break;
-        case 'private': return 'Este es un evento privado y solo se puede acceder por invitación.';
-        default: break;
+
+        case 'semi-private':
+          // Semiprivado: solo contactos del creador
+          final creatorDoc = await _db.collection('users').doc(creatorId).get();
+          if (!creatorDoc.exists)
+            return 'Error: No se pudo verificar la privacidad del evento.';
+          final creatorContacts = List<String>.from(
+            creatorDoc.data()?['contacts'] ?? [],
+          );
+          if (!creatorContacts.contains(currentUid)) {
+            return 'Este evento es solo para contactos del organizador.';
+          }
+          break;
+
+        case 'private':
+          // Privado: solo con invitación
+          if (!invited.contains(currentUid)) {
+            return 'Este evento es privado. Necesitas una invitación para unirte.';
+          }
+          break;
+
+        default:
+          break;
       }
 
-      await eventDocRef.update({'participants': FieldValue.arrayUnion([currentUid])});
+      // Agregar al evento
+      await eventDocRef.update({
+        'participants': FieldValue.arrayUnion([currentUid]),
+        // Si fue invitado, lo removemos de la lista de invitados
+        if (invited.contains(currentUid))
+          'invited': FieldValue.arrayRemove([currentUid]),
+      });
 
+      // Notificar al creador
       final currentUser = _auth.currentUser;
       final joinerName = currentUser?.displayName ?? 'Un usuario';
       final eventTitle = data['title'] ?? 'un evento';
@@ -236,25 +295,40 @@ class EventController {
   // --- MÉTODOS DE AYUDA (NUEVOS y sin cambios) ---
 
   // Lógica de filtrado reutilizable
+  // Públicos: todos lo ven
+  // Semiprivados: solo contactos del creador (bidireccional)
+  // Privados: solo el creador
   List<QueryDocumentSnapshot> _filterVisibleEvents(
-      List<QueryDocumentSnapshot> docs, List<String> myContacts) {
+    List<QueryDocumentSnapshot> docs,
+    List<String> myContacts,
+  ) {
     return docs.where((doc) {
       final data = doc.data() as Map<String, dynamic>;
       final privacy = data['privacy'] ?? 'public';
       final creatorId = data['creatorId'];
 
+      // Público: todos lo ven
       if (privacy == 'public') return true;
+
+      // Privado: solo el creador lo ve
+      if (privacy == 'private') return creatorId == currentUid;
+
+      // Semiprivado: el creador lo ve SIEMPRE, o lo ven sus contactos
       if (privacy == 'semi-private') {
-        // Es visible si yo soy el creador O si el creador está en mis contactos
-        return creatorId == currentUid || myContacts.contains(creatorId);
+        if (creatorId == currentUid) return true; // El creador siempre lo ve
+        // Verificar si soy contacto del creador (bidireccional)
+        return myContacts.contains(creatorId);
       }
+
       return false;
     }).toList();
   }
 
   // Utilidad para crear un QuerySnapshot "falso" y mantener compatibilidad
   QuerySnapshot _createFakeQuerySnapshot(
-      List<QueryDocumentSnapshot> docs, SnapshotMetadata metadata) {
+    List<QueryDocumentSnapshot> docs,
+    SnapshotMetadata metadata,
+  ) {
     return _FakeQuerySnapshot(docs, metadata);
   }
 
@@ -263,20 +337,31 @@ class EventController {
     const r = 6371;
     final dLat = _toRadians(lat2 - lat1);
     final dLng = _toRadians(lng2 - lng1);
-    final a = sin(dLat / 2) * sin(dLat / 2) + cos(_toRadians(lat1)) * cos(_toRadians(lat2)) * sin(dLng / 2) * sin(dLng / 2);
+    final a =
+        sin(dLat / 2) * sin(dLat / 2) +
+        cos(_toRadians(lat1)) *
+            cos(_toRadians(lat2)) *
+            sin(dLng / 2) *
+            sin(dLng / 2);
     final c = 2 * atan2(sqrt(a), sqrt(1 - a));
     return r * c;
   }
+
   double _toRadians(double d) => d * pi / 180;
 
   // --- OBTENER INFO DE PARTICIPANTES (Sin cambios) ---
-  Future<List<Map<String, dynamic>>> getParticipantsInfo(List<String> participantIds) async {
+  Future<List<Map<String, dynamic>>> getParticipantsInfo(
+    List<String> participantIds,
+  ) async {
     if (participantIds.isEmpty) return [];
     try {
       final users = <Map<String, dynamic>>[];
       for (var i = 0; i < participantIds.length; i += 10) {
         final batch = participantIds.skip(i).take(10).toList();
-        final snapshot = await _db.collection('users').where(FieldPath.documentId, whereIn: batch).get();
+        final snapshot = await _db
+            .collection('users')
+            .where(FieldPath.documentId, whereIn: batch)
+            .get();
         for (var doc in snapshot.docs) {
           users.add({
             'uid': doc.id,

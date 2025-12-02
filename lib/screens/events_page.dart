@@ -477,6 +477,7 @@ class _EventsPageState extends State<EventsPage> {
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
                       value: selectedPrivacy,
+                      isExpanded: true,
                       decoration: InputDecoration(
                         prefixIcon: _getPrivacyIcon(selectedPrivacy, size: 20),
                         border: const OutlineInputBorder(),
@@ -488,15 +489,24 @@ class _EventsPageState extends State<EventsPage> {
                       items: const [
                         DropdownMenuItem(
                           value: 'public',
-                          child: Text('Público'),
+                          child: Text(
+                            'Público',
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         DropdownMenuItem(
                           value: 'semi-private',
-                          child: Text('Semiprivado (Contactos)'),
+                          child: Text(
+                            'Semiprivado (Contactos)',
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         DropdownMenuItem(
                           value: 'private',
-                          child: Text('Privado (por invitación)'),
+                          child: Text(
+                            'Privado (por invitación)',
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                       onChanged: (value) {
@@ -714,13 +724,25 @@ class _EventsPageState extends State<EventsPage> {
                       privacy: selectedPrivacy,
                     );
 
-                    if (mounted && error != null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(error),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
+                    if (mounted) {
+                      if (error != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(error),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              '✅ Evento "$title" creado exitosamente',
+                            ),
+                            backgroundColor: Colors.green,
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                      }
                     }
                   },
                   child: const Text('Crear'),

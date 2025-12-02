@@ -47,9 +47,7 @@ class _InviteFriendsDialogState extends State<InviteFriendsDialog> {
 
             // 2. Error
             if (snapshot.hasError) {
-              return Center(
-                child: Text('Error: ${snapshot.error}'),
-              );
+              return Center(child: Text('Error: ${snapshot.error}'));
             }
 
             // 3. Sin contactos
@@ -64,7 +62,10 @@ class _InviteFriendsDialogState extends State<InviteFriendsDialog> {
                       SizedBox(height: 16),
                       Text(
                         'No tienes contactos',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       SizedBox(height: 8),
                       Text(
@@ -79,82 +80,113 @@ class _InviteFriendsDialogState extends State<InviteFriendsDialog> {
             }
 
             // 4. Obtener IDs de contactos
-            final contactIds = snapshot.data!.docs.map((doc) => doc.id).toList();
-
-            // 5. Filtrar contactos que NO están en el evento
-            final availableContactIds = contactIds
-                .where((id) => !widget.currentParticipants.contains(id))
+            final contactIds = snapshot.data!.docs
+                .map((doc) => doc.id)
                 .toList();
 
-            // 6. Si todos los contactos ya están en el evento
-            if (availableContactIds.isEmpty) {
-              return const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.check_circle, size: 64, color: Colors.green),
-                      SizedBox(height: 16),
-                      Text(
-                        'Todos tus contactos ya están en el evento',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 16),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
-
-            // 7. Cargar información de los contactos disponibles
-            return FutureBuilder<List<Map<String, dynamic>>>(
-              future: _loadContactsInfo(availableContactIds),
-              builder: (context, contactsSnapshot) {
-                if (contactsSnapshot.connectionState == ConnectionState.waiting) {
+            // 5. Obtener lista de invitados también
+            return StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('events')
+                  .doc(widget.eventId)
+                  .snapshots(),
+              builder: (context, eventSnapshot) {
+                if (!eventSnapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                if (contactsSnapshot.hasError) {
-                  return Center(
-                    child: Text('Error al cargar contactos: ${contactsSnapshot.error}'),
-                  );
-                }
+                final eventData =
+                    eventSnapshot.data!.data() as Map<String, dynamic>?;
+                final invitedList = List.from(eventData?['invited'] ?? []);
 
-                final contacts = contactsSnapshot.data ?? [];
+                // Filtrar contactos que NO están en el evento Y NO han sido invitados
+                final availableContactIds = contactIds
+                    .where(
+                      (id) =>
+                          !widget.currentParticipants.contains(id) &&
+                          !invitedList.contains(id),
+                    )
+                    .toList();
 
-                if (contacts.isEmpty) {
+                // Si todos los contactos ya están en el evento o invitados
+                if (availableContactIds.isEmpty) {
                   return const Center(
-                    child: Text('No se pudieron cargar los contactos'),
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            size: 64,
+                            color: Colors.green,
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'Todos tus contactos ya están invitados o participando',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 16),
+                          ),
+                        ],
+                      ),
+                    ),
                   );
                 }
 
-                return ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: contacts.length,
-                  itemBuilder: (context, index) {
-                    final contact = contacts[index];
-                    final userId = contact['id'] as String;
-                    final userName = contact['name'] as String;
-                    final userPhoto = contact['photoURL'] as String?;
-                    final isInvited = _justInvited.contains(userId);
+                // 7. Cargar información de los contactos disponibles
+                return FutureBuilder<List<Map<String, dynamic>>>(
+                  future: _loadContactsInfo(availableContactIds),
+                  builder: (context, contactsSnapshot) {
+                    if (contactsSnapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
 
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundImage: userPhoto != null && userPhoto.isNotEmpty
-                            ? NetworkImage(userPhoto)
-                            : null,
-                        child: userPhoto == null || userPhoto.isEmpty
-                            ? Text(userName[0].toUpperCase())
-                            : null,
-                      ),
-                      title: Text(userName),
-                      trailing: isInvited
-                          ? const Icon(Icons.check, color: Colors.green)
-                          : const Icon(Icons.person_add),
-                      onTap: isInvited
-                          ? null
-                          : () => _inviteUser(userId, userName),
+                    if (contactsSnapshot.hasError) {
+                      return Center(
+                        child: Text(
+                          'Error al cargar contactos: ${contactsSnapshot.error}',
+                        ),
+                      );
+                    }
+
+                    final contacts = contactsSnapshot.data ?? [];
+
+                    if (contacts.isEmpty) {
+                      return const Center(
+                        child: Text('No se pudieron cargar los contactos'),
+                      );
+                    }
+
+                    return ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: contacts.length,
+                      itemBuilder: (context, index) {
+                        final contact = contacts[index];
+                        final userId = contact['id'] as String;
+                        final userName = contact['name'] as String;
+                        final userPhoto = contact['photoURL'] as String?;
+                        final isInvited = _justInvited.contains(userId);
+
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundImage:
+                                userPhoto != null && userPhoto.isNotEmpty
+                                ? NetworkImage(userPhoto)
+                                : null,
+                            child: userPhoto == null || userPhoto.isEmpty
+                                ? Text(userName[0].toUpperCase())
+                                : null,
+                          ),
+                          title: Text(userName),
+                          trailing: isInvited
+                              ? const Icon(Icons.check, color: Colors.green)
+                              : const Icon(Icons.person_add),
+                          onTap: isInvited
+                              ? null
+                              : () => _inviteUser(userId, userName),
+                        );
+                      },
                     );
                   },
                 );
@@ -173,7 +205,9 @@ class _InviteFriendsDialogState extends State<InviteFriendsDialog> {
   }
 
   // ✅ Método para cargar información de los contactos
-  Future<List<Map<String, dynamic>>> _loadContactsInfo(List<String> contactIds) async {
+  Future<List<Map<String, dynamic>>> _loadContactsInfo(
+    List<String> contactIds,
+  ) async {
     final contacts = <Map<String, dynamic>>[];
 
     for (final id in contactIds) {
@@ -202,15 +236,15 @@ class _InviteFriendsDialogState extends State<InviteFriendsDialog> {
     setState(() => _justInvited.add(friendUid));
 
     try {
-      // Agregar usuario al evento
+      // ✅ SOLO agregamos al array 'invited', NO a 'participants'
       await FirebaseFirestore.instance
           .collection('events')
           .doc(widget.eventId)
           .update({
-        'participants': FieldValue.arrayUnion([friendUid]),
-      });
+            'invited': FieldValue.arrayUnion([friendUid]),
+          });
 
-      // Enviar notificación
+      // Enviar notificación de invitación
       await _notificationService.sendEventInvitation(
         recipientId: friendUid,
         eventId: widget.eventId,
