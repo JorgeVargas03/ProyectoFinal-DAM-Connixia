@@ -615,7 +615,22 @@ class _EventDetailPageState extends State<EventDetailPage> {
 
     // Variable para el límite de participantes
     int? selectedMaxParticipants = currentMaxParticipants;
+    bool showCustomParticipants = false;
+    final customParticipantsCtrl = TextEditingController();
 
+    // Si el límite actual no está en las opciones predefinidas, activar personalizado
+    if (currentMaxParticipants != null &&
+        currentMaxParticipants != 5 &&
+        currentMaxParticipants != 10 &&
+        currentMaxParticipants != 15 &&
+        currentMaxParticipants != 20 &&
+        currentMaxParticipants != 30 &&
+        currentMaxParticipants != 50) {
+      showCustomParticipants = true;
+      customParticipantsCtrl.text = currentMaxParticipants.toString();
+      // Establecer -1 para que el dropdown muestre "Personalizado"
+      selectedMaxParticipants = currentMaxParticipants;
+    }
     showDialog(
       context: context,
       builder: (ctx) {
@@ -813,7 +828,9 @@ class _EventDetailPageState extends State<EventDetailPage> {
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<int?>(
-                      value: selectedMaxParticipants,
+                      value: showCustomParticipants
+                          ? -1
+                          : selectedMaxParticipants,
                       isExpanded: true,
                       decoration: InputDecoration(
                         prefixIcon: const Icon(Icons.people_outline),
@@ -883,13 +900,58 @@ class _EventDetailPageState extends State<EventDetailPage> {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                        const DropdownMenuItem(
+                          value: -1, // Valor especial para personalizado
+                          child: Text(
+                            'Personalizado...',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ],
                       onChanged: (value) {
                         setStateDialog(() {
-                          selectedMaxParticipants = value;
+                          if (value == -1) {
+                            showCustomParticipants = true;
+                            // Mantener el valor actual si existe
+                            if (selectedMaxParticipants != null) {
+                              customParticipantsCtrl.text =
+                                  selectedMaxParticipants.toString();
+                            }
+                          } else {
+                            showCustomParticipants = false;
+                            selectedMaxParticipants = value;
+                            customParticipantsCtrl.clear();
+                          }
                         });
                       },
                     ),
+                    // Campo de texto para número personalizado
+                    if (showCustomParticipants) ...[
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: customParticipantsCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Número de participantes',
+                          hintText: 'Ej: 25',
+                          prefixIcon: const Icon(Icons.edit),
+                          border: const OutlineInputBorder(),
+                          helperText:
+                              'Mínimo: $currentParticipantsCount (actual), Máximo: 1000',
+                          helperMaxLines: 2,
+                        ),
+                        onChanged: (value) {
+                          final num = int.tryParse(value);
+                          if (num != null &&
+                              num >= currentParticipantsCount &&
+                              num <= 1000) {
+                            setStateDialog(() {
+                              selectedMaxParticipants = num;
+                            });
+                          }
+                        },
+                      ),
+                    ],
                     // Advertencia si intenta reducir mucho
                     if (selectedMaxParticipants != null &&
                         selectedMaxParticipants! < currentParticipantsCount + 3)

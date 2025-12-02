@@ -437,6 +437,8 @@ class _EventsPageState extends State<EventsPage> {
 
     String selectedPrivacy = 'public';
     int? selectedMaxParticipants; // null = sin límite
+    bool showCustomParticipants = false;
+    final customParticipantsCtrl = TextEditingController();
 
     showDialog(
       context: context,
@@ -528,7 +530,9 @@ class _EventsPageState extends State<EventsPage> {
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<int?>(
-                      value: selectedMaxParticipants,
+                      value: showCustomParticipants
+                          ? -1
+                          : selectedMaxParticipants,
                       isExpanded: true,
                       decoration: const InputDecoration(
                         prefixIcon: Icon(Icons.people_outline),
@@ -590,13 +594,49 @@ class _EventsPageState extends State<EventsPage> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        DropdownMenuItem(
+                          value: -1, // Valor especial para personalizado
+                          child: Text(
+                            'Personalizado...',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ],
                       onChanged: (value) {
                         setStateDialog(() {
-                          selectedMaxParticipants = value;
+                          if (value == -1) {
+                            showCustomParticipants = true;
+                            selectedMaxParticipants = null;
+                          } else {
+                            showCustomParticipants = false;
+                            selectedMaxParticipants = value;
+                          }
                         });
                       },
                     ),
+                    // Campo de texto para número personalizado
+                    if (showCustomParticipants) ...[
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: customParticipantsCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Número de participantes',
+                          hintText: 'Ej: 25',
+                          prefixIcon: Icon(Icons.edit),
+                          border: OutlineInputBorder(),
+                          helperText: 'Ingresa un número entre 2 y 1000',
+                        ),
+                        onChanged: (value) {
+                          final num = int.tryParse(value);
+                          if (num != null && num >= 2 && num <= 1000) {
+                            setStateDialog(() {
+                              selectedMaxParticipants = num;
+                            });
+                          }
+                        },
+                      ),
+                    ],
 
                     const SizedBox(height: 20),
 
