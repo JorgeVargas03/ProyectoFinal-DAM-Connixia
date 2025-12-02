@@ -35,16 +35,6 @@ class _EventsPageState extends State<EventsPage> {
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    if (widget.initialLocation != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showCreateEventDialog(preselectedLocation: widget.initialLocation);
-      });
-    }
-  }
-
   // Estado para el filtro de tiempo: 'all', 'upcoming', 'past'
   String _timeFilter = 'all';
 
