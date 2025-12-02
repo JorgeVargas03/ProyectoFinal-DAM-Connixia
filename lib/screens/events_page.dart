@@ -8,6 +8,7 @@ import 'location_picker_page.dart';
 
 class EventsPage extends StatefulWidget {
   final bool filterCreatedOnly;
+
   const EventsPage({super.key, this.filterCreatedOnly = false});
 
   @override
@@ -17,6 +18,9 @@ class EventsPage extends StatefulWidget {
 class _EventsPageState extends State<EventsPage> {
   final _eventCtrl = EventController();
 
+  // Estado para el filtro de tiempo: 'all', 'upcoming', 'past'
+  String _timeFilter = 'all';
+
   String _formatDate(Timestamp? timestamp) {
     if (timestamp == null) return '--';
     return DateFormat('dd MMM HH:mm', 'es').format(timestamp.toDate());
@@ -25,139 +29,209 @@ class _EventsPageState extends State<EventsPage> {
   @override
   Widget build(BuildContext context) {
     final myUid = FirebaseAuth.instance.currentUser?.uid;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
-        // Título dinámico según el filtro
         title: Text(widget.filterCreatedOnly ? 'Eventos Creados' : 'Mis Eventos'),
         centerTitle: true,
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _eventCtrl.getMyEvents(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: Column(
+        children: [
+          // --- BARRA DE FILTROS DE TIEMPO ---
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            height: 40,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                _buildFilterChip('Todos', 'all'),
+                const SizedBox(width: 8),
+                _buildFilterChip('Próximos', 'upcoming'),
+                const SizedBox(width: 8),
+                _buildFilterChip('Pasados', 'past'),
+              ],
+            ),
+          ),
 
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
+          // --- LISTA DE EVENTOS ---
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: _eventCtrl.getMyEvents(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-          // Obtenemos todos los eventos
-          var docs = snapshot.data?.docs ?? [];
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
 
-          // --- FILTRADO NUEVO ---
-          // Si el filtro está activo, dejamos solo los que yo creé
-          if (widget.filterCreatedOnly && myUid != null) {
-            docs = docs.where((doc) {
-              final data = doc.data() as Map<String, dynamic>;
-              return data['creatorId'] == myUid;
-            }).toList();
-          }
-          // ----------------------
+                var docs = snapshot.data?.docs ?? [];
+                final now = DateTime.now();
 
-          if (docs.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.event_note, size: 80, color: Colors.grey[300]),
-                  const SizedBox(height: 16),
-                  Text(
-                    widget.filterCreatedOnly
-                        ? 'No has creado eventos aún'
-                        : 'No tienes eventos activos',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 16),
-                  ),
-                ],
-              ),
-            );
-          }
+                // 1. FILTRO: Creados vs Todos (Lógica anterior)
+                if (widget.filterCreatedOnly && myUid != null) {
+                  docs = docs.where((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    return data['creatorId'] == myUid;
+                  }).toList();
+                }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(12),
-            itemCount: docs.length,
-            itemBuilder: (context, index) {
-              final doc = docs[index];
-              final data = doc.data() as Map<String, dynamic>;
-              final eventId = doc.id;
+                // 2. FILTRO: Tiempo (Próximos vs Pasados)
+                if (_timeFilter != 'all') {
+                  docs = docs.where((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    final date = (data['date'] as Timestamp?)?.toDate();
+                    if (date == null) return false;
 
-              final title = data['title'] ?? 'Sin título';
-              final creatorId = data['creatorId'] ?? '';
-              final creatorName = data['creatorName'] ?? 'Alguien';
-              final date = data['date'] as Timestamp?;
-              final address = data['location']?['address'] ?? 'Ubicación desconocida';
+                    if (_timeFilter == 'upcoming') {
+                      return date.isAfter(now);
+                    } else { // 'past'
+                      return date.isBefore(now);
+                    }
+                  }).toList();
+                }
 
-              final isCreator = (myUid == creatorId);
+                // 3. ORDENAMIENTO (Mejora de UX)
+                docs.sort((a, b) {
+                  final dateA = (a.data() as Map<String, dynamic>)['date'] as Timestamp?;
+                  final dateB = (b.data() as Map<String, dynamic>)['date'] as Timestamp?;
 
-              return Card(
-                elevation: 3,
-                margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.all(16),
-                  leading: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                        Icons.location_on,
-                        color: Theme.of(context).colorScheme.primary
-                    ),
-                  ),
-                  title: Text(
-                      title,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
-                          const SizedBox(width: 4),
-                          Text(_formatDate(date), style: TextStyle(color: Colors.grey[800])),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        isCreator ? 'Organizado por ti' : 'Organiza: $creatorName',
-                        style: TextStyle(
-                            color: isCreator ? Colors.green : Colors.grey[600],
-                            fontWeight: FontWeight.w500,
-                            fontSize: 12
+                  if (dateA == null || dateB == null) return 0;
+
+                  // Si son pasados, queremos ver el más reciente primero (Descendente)
+                  // Si son próximos o todos, queremos ver el más cercano primero (Ascendente)
+                  if (_timeFilter == 'past') {
+                    return dateB.compareTo(dateA);
+                  } else {
+                    return dateA.compareTo(dateB);
+                  }
+                });
+
+
+                if (docs.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.event_busy, size: 80, color: Colors.grey[300]),
+                        const SizedBox(height: 16),
+                        Text(
+                          _getEmptyMessage(),
+                          style: TextStyle(color: Colors.grey[600], fontSize: 16),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(address, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    ],
-                  ),
-                  trailing: isCreator
-                      ? IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    tooltip: 'Eliminar evento',
-                    onPressed: () => _confirmDelete(eventId, creatorId),
-                  )
-                      : IconButton(
-                    icon: const Icon(Icons.exit_to_app, color: Colors.orange),
-                    tooltip: 'Salir del evento',
-                    onPressed: () => _confirmLeave(eventId),
-                  ),
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => EventDetailPage(eventId: eventId),
+                      ],
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  itemCount: docs.length,
+                  itemBuilder: (context, index) {
+                    final doc = docs[index];
+                    final data = doc.data() as Map<String, dynamic>;
+                    final eventId = doc.id;
+
+                    final title = data['title'] ?? 'Sin título';
+                    final creatorId = data['creatorId'] ?? '';
+                    final creatorName = data['creatorName'] ?? 'Alguien';
+                    final date = data['date'] as Timestamp?;
+                    final address = data['location']?['address'] ?? 'Ubicación desconocida';
+
+                    final isCreator = (myUid == creatorId);
+                    final isPast = date?.toDate().isBefore(now) ?? false;
+
+                    return Opacity(
+                      // Efecto visual: si ya pasó, se ve un poco más transparente
+                      opacity: isPast ? 0.7 : 1.0,
+                      child: Card(
+                        elevation: isPast ? 1 : 3, // Menos sombra si ya pasó
+                        margin: const EdgeInsets.only(bottom: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        color: isPast
+                            ? (Theme.of(context).brightness == Brightness.dark
+                              ? Colors.grey.withOpacity(0.1)
+                              : Colors.grey[300])
+                            : null,
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.all(16),
+                          leading: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: isPast
+                                  ? Colors.grey.withOpacity(0.1)
+                                  : colorScheme.primaryContainer.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                                isPast ? Icons.history : Icons.location_on,
+                                color: isPast
+                                    ? Colors.grey[600]
+                                    : colorScheme.primary
+                            ),
+                          ),
+                          title: Text(
+                              title,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                decoration: isPast ? TextDecoration.lineThrough : null, // Tachado opcional si ya pasó
+                                color: isPast ? Colors.grey[700] : null,
+                              )
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
+                                  const SizedBox(width: 4),
+                                  Text(_formatDate(date), style: TextStyle(color: Colors.grey[800])),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                isCreator ? 'Organizado por ti' : 'Organiza: $creatorName',
+                                style: TextStyle(
+                                    color: isCreator ? Colors.green : Colors.grey[600],
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 12
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(address, maxLines: 1, overflow: TextOverflow.ellipsis),
+                            ],
+                          ),
+                          trailing: isCreator
+                              ? IconButton(
+                            icon: const Icon(Icons.delete_outline, color: Colors.red),
+                            tooltip: 'Eliminar evento',
+                            onPressed: () => _confirmDelete(eventId, creatorId),
+                          )
+                              : IconButton(
+                            icon: const Icon(Icons.exit_to_app, color: Colors.orange),
+                            tooltip: 'Salir del evento',
+                            onPressed: () => _confirmLeave(eventId),
+                          ),
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => EventDetailPage(eventId: eventId),
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     );
                   },
-                ),
-              );
-            },
-          );
-        },
+                );
+              },
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showCreateEventDialog,
@@ -167,9 +241,36 @@ class _EventsPageState extends State<EventsPage> {
     );
   }
 
-  // ... (El resto de tus métodos _confirmDelete, _confirmLeave y _showCreateEventDialog se mantienen igual)
+  // --- WIDGET PARA LOS CHIPS DE FILTRO ---
+  Widget _buildFilterChip(String label, String value) {
+    final isSelected = _timeFilter == value;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (bool selected) {
+        if (selected) {
+          setState(() => _timeFilter = value);
+        }
+      },
+      selectedColor: colorScheme.primaryContainer,
+      labelStyle: TextStyle(
+        color: isSelected ? colorScheme.onPrimaryContainer : colorScheme.onSurface,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+      checkmarkColor: colorScheme.onPrimaryContainer,
+    );
+  }
+
+  // Mensaje dinámico cuando está vacío
+  String _getEmptyMessage() {
+    if (_timeFilter == 'upcoming') return 'No tienes eventos próximos';
+    if (_timeFilter == 'past') return 'No tienes eventos pasados';
+    return 'No tienes eventos activos';
+  }
+
   Future<void> _confirmDelete(String eventId, String creatorId) async {
-    // ... tu código existente
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -196,7 +297,6 @@ class _EventsPageState extends State<EventsPage> {
   }
 
   Future<void> _confirmLeave(String eventId) async {
-    // ... tu código existente
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -223,7 +323,6 @@ class _EventsPageState extends State<EventsPage> {
   }
 
   void _showCreateEventDialog() {
-    // ... tu código existente
     final titleCtrl = TextEditingController();
     final descCtrl = TextEditingController();
 
@@ -273,7 +372,7 @@ class _EventsPageState extends State<EventsPage> {
                       const SizedBox(height: 8),
                       InkWell(
                         onTap: () async {
-                          // 1. Elegir Fecha
+                          // Elegir Fecha
                           final date = await showDatePicker(
                             context: context,
                             initialDate: selectedDate,
@@ -282,7 +381,7 @@ class _EventsPageState extends State<EventsPage> {
                           );
                           if (date == null) return;
 
-                          // 2. Elegir Hora
+                          // Elegir Hora
                           if (!context.mounted) return;
                           final time = await showTimePicker(
                             context: context,
@@ -290,7 +389,7 @@ class _EventsPageState extends State<EventsPage> {
                           );
                           if (time == null) return;
 
-                          // 3. Combinar y Actualizar
+                          // Combinar y Actualizar
                           final newDateTime = DateTime(
                               date.year, date.month, date.day,
                               time.hour, time.minute
