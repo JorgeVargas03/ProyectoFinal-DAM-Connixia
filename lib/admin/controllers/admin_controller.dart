@@ -203,9 +203,14 @@ class AdminController {
           .count()
           .get();
 
-      // Obtener el número de contactos desde el array 'contacts'
-      final contactsList = List<String>.from(userData['contacts'] ?? []);
-      final contactsCount = contactsList.length;
+      // Contar contactos desde la subcolección (fuente de verdad)
+      final contactsSnapshot = await _db
+          .collection('users')
+          .doc(userId)
+          .collection('contacts')
+          .count()
+          .get();
+      final contactsCount = contactsSnapshot.count ?? 0;
 
       return {
         ...userData,
