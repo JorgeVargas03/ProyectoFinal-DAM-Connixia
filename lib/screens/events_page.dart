@@ -211,6 +211,8 @@ class _EventsPageState extends State<EventsPage> {
                             tooltip: 'Eliminar evento',
                             onPressed: () => _confirmDelete(eventId, creatorId),
                           )
+                              : isPast
+                              ? null // Si ya pasó, no mostramos nada (quita la opción de salir)
                               : IconButton(
                             icon: const Icon(Icons.exit_to_app, color: Colors.orange),
                             tooltip: 'Salir del evento',

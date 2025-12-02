@@ -86,6 +86,10 @@ class _EventDetailPageState extends State<EventDetailPage> {
           final lat = location?['lat'] as double?;
           final lng = location?['lng'] as double?;
 
+          // --- DETECTAR SI ES PASADO ---
+          final now = DateTime.now();
+          final isPast = date != null && date.toDate().isBefore(now);
+
           // Validar permisos
           final isCreator = _currentUser?.uid == creatorId;
 
@@ -112,7 +116,6 @@ class _EventDetailPageState extends State<EventDetailPage> {
                 children: [
                   // --- SECCIÓN 1: EL MAPA ---
                   _buildMapView(lat, lng, address),
-
                   Padding(
                     padding: const EdgeInsets.all(20),
                     child: Column(
@@ -331,13 +334,35 @@ class _EventDetailPageState extends State<EventDetailPage> {
                           },
                         ),
 
-
-                        const SizedBox(height: 40),
-
-                        // --- SECCIÓN 6: BOTONES DE ACCIÓN ---
                         SizedBox(
                           width: double.infinity,
-                          child: isCreator
+                          child: isPast
+                          // CASO 1: EL EVENTO YA PASÓ (CONGELADO)
+                              ? Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200], // Fondo gris
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey[400]!),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.history, color: Colors.grey),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Evento finalizado',
+                                  style: TextStyle(
+                                      color: Colors.grey[700],
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                          // CASO 2: EL EVENTO ESTÁ VIGENTE (Lógica original)
+                              : (isCreator
                               ? ElevatedButton.icon(
                             onPressed: () => _confirmDelete(context, creatorId),
                             icon: const Icon(Icons.delete_forever),
@@ -366,8 +391,11 @@ class _EventDetailPageState extends State<EventDetailPage> {
                               foregroundColor: Colors.green[700],
                               padding: const EdgeInsets.all(16),
                             ),
+                          )
                           ),
                         ),
+                        // Espacio extra al final para que no quede pegado al borde
+                        const SizedBox(height: 40),
                       ],
                     ),
                   ),
