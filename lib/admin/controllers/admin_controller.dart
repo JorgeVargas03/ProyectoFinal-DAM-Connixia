@@ -203,10 +203,15 @@ class AdminController {
           .count()
           .get();
 
+      // Obtener el número de contactos desde el array 'contacts'
+      final contactsList = List<String>.from(userData['contacts'] ?? []);
+      final contactsCount = contactsList.length;
+
       return {
         ...userData,
         'eventsCreated': eventsCreated.count,
         'eventsParticipated': eventsParticipated.count,
+        'contactsCount': contactsCount,
       };
     } catch (e) {
       debugPrint('Error obteniendo detalles de usuario: $e');

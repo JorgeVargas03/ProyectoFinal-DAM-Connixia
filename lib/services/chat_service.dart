@@ -199,6 +199,7 @@ class ChatService {
   /// Marcar mensajes como leídos
   Future<void> markMessagesAsRead(String eventId, String userId) async {
     try {
+      // Actualizar el timestamp de última lectura
       await _firestore
           .collection('users')
           .doc(userId)
@@ -208,6 +209,23 @@ class ChatService {
             'lastReadAt': FieldValue.serverTimestamp(),
             'eventId': eventId,
           }, SetOptions(merge: true));
+
+      // Marcar todas las notificaciones de este chat como leídas
+      final notificationsSnapshot = await _firestore
+          .collection('notifications')
+          .where('recipientId', isEqualTo: userId)
+          .where('eventId', isEqualTo: eventId)
+          .where('type', isEqualTo: 'event_message')
+          .where('read', isEqualTo: false)
+          .get();
+
+      if (notificationsSnapshot.docs.isNotEmpty) {
+        final batch = _firestore.batch();
+        for (var doc in notificationsSnapshot.docs) {
+          batch.update(doc.reference, {'read': true});
+        }
+        await batch.commit();
+      }
     } catch (e) {
       print('Error al marcar mensajes como leídos: $e');
     }

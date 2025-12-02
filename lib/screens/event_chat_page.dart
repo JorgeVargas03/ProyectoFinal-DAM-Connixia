@@ -19,7 +19,8 @@ class EventChatPage extends StatefulWidget {
   State<EventChatPage> createState() => _EventChatPageState();
 }
 
-class _EventChatPageState extends State<EventChatPage> {
+class _EventChatPageState extends State<EventChatPage>
+    with WidgetsBindingObserver {
   final ChatService _chatService = ChatService();
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -29,20 +30,41 @@ class _EventChatPageState extends State<EventChatPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _markAsRead();
+    // Marcar como leído cada vez que se entra al chat
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _markAsRead();
+    });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _messageController.dispose();
     _scrollController.dispose();
+    // Marcar como leído al salir
+    _markAsRead();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Marcar como leído cuando la app vuelve a primer plano
+    if (state == AppLifecycleState.resumed) {
+      _markAsRead();
+    }
   }
 
   Future<void> _markAsRead() async {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser != null) {
-      await _chatService.markMessagesAsRead(widget.eventId, currentUser.uid);
+      try {
+        await _chatService.markMessagesAsRead(widget.eventId, currentUser.uid);
+      } catch (e) {
+        print('Error marcando mensajes como leídos: $e');
+      }
     }
   }
 

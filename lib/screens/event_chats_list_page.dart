@@ -161,8 +161,8 @@ class EventChatsListPage extends StatelessWidget {
                           ),
                         ),
                         child: InkWell(
-                          onTap: () {
-                            Navigator.push(
+                          onTap: () async {
+                            await Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (_) => EventChatPage(
@@ -171,6 +171,7 @@ class EventChatsListPage extends StatelessWidget {
                                 ),
                               ),
                             );
+                            // No es necesario hacer nada aquí, el StreamBuilder se actualiza automáticamente
                           },
                           child: Padding(
                             padding: const EdgeInsets.symmetric(

@@ -189,6 +189,8 @@ class _UserCard extends StatelessWidget {
               child: Text(
                 displayName,
                 style: const TextStyle(fontWeight: FontWeight.bold),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             if (role == 'admin')
@@ -229,7 +231,7 @@ class _UserCard extends StatelessWidget {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(email),
+            Text(email, maxLines: 1, overflow: TextOverflow.ellipsis),
             if (createdAt != null)
               Text(
                 'Registrado: ${DateFormat('dd/MM/yyyy').format(createdAt.toDate())}',
@@ -437,7 +439,7 @@ class _UserCard extends StatelessWidget {
                   ),
                   _DetailRow(
                     label: 'Contactos',
-                    value: (details['contacts']?.length ?? 0).toString(),
+                    value: (details['contactsCount'] ?? 0).toString(),
                   ),
                 ],
               ),
