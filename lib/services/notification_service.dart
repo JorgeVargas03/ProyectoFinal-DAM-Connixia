@@ -27,7 +27,7 @@ class NotificationService {
         'read': false,
         'createdAt': FieldValue.serverTimestamp(),
       });
-      
+
       debugPrint('Notificación enviada al creador del evento');
     } catch (e) {
       debugPrint('Error enviando notificación: $e');
@@ -37,7 +37,7 @@ class NotificationService {
   /// Obtener notificaciones del usuario actual
   Stream<QuerySnapshot> getMyNotifications() {
     if (currentUid == null) return const Stream.empty();
-    
+
     return _db
         .collection('notifications')
         .where('recipientId', isEqualTo: currentUid)
@@ -69,13 +69,13 @@ class NotificationService {
           .doc(recipientId)
           .collection('notifications')
           .add({
-        'type': 'event_invitation',
-        'eventId': eventId,
-        'eventTitle': eventTitle,
-        'invitedBy': invitedBy,
-        'timestamp': FieldValue.serverTimestamp(),
-        'read': false,
-      });
+            'type': 'event_invitation',
+            'eventId': eventId,
+            'eventTitle': eventTitle,
+            'invitedBy': invitedBy,
+            'timestamp': FieldValue.serverTimestamp(),
+            'read': false,
+          });
     } catch (e) {
       debugPrint('Error al enviar notificación de invitación: $e');
       rethrow;
@@ -85,7 +85,7 @@ class NotificationService {
   /// Marcar todas las notificaciones como leídas
   Future<void> markAllAsRead() async {
     if (currentUid == null) return;
-    
+
     try {
       final batch = _db.batch();
       final snapshot = await _db
@@ -93,11 +93,11 @@ class NotificationService {
           .where('recipientId', isEqualTo: currentUid)
           .where('read', isEqualTo: false)
           .get();
-      
+
       for (var doc in snapshot.docs) {
         batch.update(doc.reference, {'read': true});
       }
-      
+
       await batch.commit();
     } catch (e) {
       debugPrint('Error marcando todas como leídas: $e');
@@ -107,7 +107,7 @@ class NotificationService {
   /// Contar notificaciones no leídas
   Stream<int> getUnreadCount() {
     if (currentUid == null) return Stream.value(0);
-    
+
     return _db
         .collection('notifications')
         .where('recipientId', isEqualTo: currentUid)
@@ -128,7 +128,7 @@ class NotificationService {
   /// Eliminar todas las notificaciones leídas
   Future<void> clearReadNotifications() async {
     if (currentUid == null) return;
-    
+
     try {
       final batch = _db.batch();
       final snapshot = await _db
@@ -136,11 +136,10 @@ class NotificationService {
           .where('recipientId', isEqualTo: currentUid)
           .where('read', isEqualTo: true)
           .get();
-      
       for (var doc in snapshot.docs) {
         batch.delete(doc.reference);
       }
-      
+
       await batch.commit();
     } catch (e) {
       debugPrint('Error limpiando notificaciones: $e');
@@ -154,7 +153,7 @@ class NotificationService {
     required String eventId,
     required String eventTitle,
     required String targetUserId, // El ID de tu amigo
-    required String senderName,   // Tu nombre
+    required String senderName, // Tu nombre
   }) async {
     try {
       await _db.collection('notifications').add({
@@ -175,7 +174,11 @@ class NotificationService {
   }
 
   // 2. RESPONDER INVITACIÓN (Lo usa el amigo al dar click)
-  Future<void> respondToInvitation(String notificationId, String eventId, bool accepted) async {
+  Future<void> respondToInvitation(
+    String notificationId,
+    String eventId,
+    bool accepted,
+  ) async {
     if (currentUid == null) return;
 
     try {
@@ -192,7 +195,7 @@ class NotificationService {
       if (accepted) {
         final eventRef = _db.collection('events').doc(eventId);
         batch.update(eventRef, {
-          'participants': FieldValue.arrayUnion([currentUid])
+          'participants': FieldValue.arrayUnion([currentUid]),
         });
       }
 
@@ -202,5 +205,4 @@ class NotificationService {
       throw e; // Relanzamos para mostrar snackbar en la UI
     }
   }
-
 }

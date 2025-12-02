@@ -37,7 +37,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 await _notificationService.clearReadNotifications();
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Notificaciones leídas eliminadas')),
+                    const SnackBar(
+                      content: Text('Notificaciones leídas eliminadas'),
+                    ),
                   );
                 }
               }
@@ -64,16 +66,51 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
           final notifications = snapshot.data?.docs ?? [];
 
-          if (notifications.isEmpty) {
-            return const Center(
+          // Filtrar para excluir mensajes de chat (event_message)
+          final filteredNotifications = notifications.where((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            final type = data['type'] ?? '';
+            return type != 'event_message';
+          }).toList();
+
+          if (filteredNotifications.isEmpty) {
+            return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.notifications_off, size: 80, color: Colors.grey),
-                  SizedBox(height: 16),
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primaryContainer.withOpacity(0.3),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.notifications_off_outlined,
+                      size: 60,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withOpacity(0.6),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
                   Text(
                     'No tienes notificaciones',
-                    style: TextStyle(fontSize: 18, color: Colors.grey),
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Cuando recibas notificaciones aparecerán aquí',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -81,9 +118,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
           }
 
           return ListView.builder(
-            itemCount: notifications.length,
+            itemCount: filteredNotifications.length,
             itemBuilder: (context, index) {
-              final doc = notifications[index];
+              final doc = filteredNotifications[index];
               final data = doc.data() as Map<String, dynamic>;
               final notificationId = doc.id;
 
@@ -120,41 +157,147 @@ class _NotificationsPageState extends State<NotificationsPage> {
               if (type == 'event_invite') {
                 final isPending = status == 'pending';
 
-                return Card(
-                  color: isRead ? Colors.white : Colors.blue[50],
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                return Container(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isRead
+                        ? Theme.of(context).colorScheme.surface
+                        : Theme.of(
+                            context,
+                          ).colorScheme.primaryContainer.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isPending
+                          ? Colors.indigo.withOpacity(0.3)
+                          : Theme.of(context).colorScheme.outlineVariant,
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
                   child: Column(
                     children: [
-                      ListTile(
-                        leading: const CircleAvatar(
-                          backgroundColor: Colors.indigo,
-                          child: Icon(Icons.mail, color: Colors.white),
+                      Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.indigo.shade400,
+                                    Colors.indigo.shade600,
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.mail,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    message,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    isPending
+                                        ? '¿Deseas asistir?'
+                                        : 'Invitación $status',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Text(
+                              timeAgo,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant.withOpacity(0.8),
+                              ),
+                            ),
+                          ],
                         ),
-                        title: Text(message, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text(isPending ? '¿Deseas asistir?' : 'Invitación $status • $timeAgo'),
                       ),
                       if (isPending)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8.0, right: 8.0),
+                        Container(
+                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
                             children: [
-                              TextButton(
-                                onPressed: () {
-                                  _notificationService.respondToInvitation(notificationId, eventId, false);
-                                },
-                                child: const Text('Rechazar', style: TextStyle(color: Colors.grey)),
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: () {
+                                    _notificationService.respondToInvitation(
+                                      notificationId,
+                                      eventId,
+                                      false,
+                                    );
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    side: BorderSide(color: Colors.grey[400]!),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  child: const Text('Rechazar'),
+                                ),
                               ),
-                              const SizedBox(width: 8),
-                              ElevatedButton(
-                                onPressed: () {
-                                  _notificationService.respondToInvitation(notificationId, eventId, true);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('¡Te has unido al evento!')),
-                                  );
-                                },
-                                style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo),
-                                child: const Text('Aceptar', style: TextStyle(color: Colors.white)),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    _notificationService.respondToInvitation(
+                                      notificationId,
+                                      eventId,
+                                      true,
+                                    );
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          '¡Te has unido al evento!',
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.indigo,
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    elevation: 0,
+                                  ),
+                                  child: const Text('Aceptar'),
+                                ),
                               ),
                             ],
                           ),
@@ -169,10 +312,31 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 key: Key(notificationId),
                 direction: DismissDirection.endToStart,
                 background: Container(
-                  color: Colors.red,
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   alignment: Alignment.centerRight,
                   padding: const EdgeInsets.only(right: 20),
-                  child: const Icon(Icons.delete, color: Colors.white),
+                  child: const Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.delete, color: Colors.white, size: 28),
+                      SizedBox(height: 4),
+                      Text(
+                        'Eliminar',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 onDismissed: (direction) {
                   _notificationService.deleteNotification(notificationId);
@@ -180,55 +344,112 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     const SnackBar(content: Text('Notificación eliminada')),
                   );
                 },
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: isRead ? Colors.grey : Colors.blue,
-                    child: Icon(
-                      _getIconForType(type),
-                      color: Colors.white,
+                child: Container(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isRead
+                        ? Theme.of(context).colorScheme.surface
+                        : Theme.of(
+                            context,
+                          ).colorScheme.primaryContainer.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                      width: 1,
                     ),
                   ),
-                  title: Text(
-                    message,
-                    style: TextStyle(
-                      fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
-                    ),
-                  ),
-                  subtitle: Text(timeAgo), // Aquí se usa la variable que faltaba
-                  trailing: isRead
-                      ? null
-                      : Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: Colors.blue,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  onTap: () async {
-                    if (!isRead) {
-                      await _notificationService.markAsRead(notificationId);
-                    }
-                    // Navegar al evento si existe
-                    if (eventId != null && mounted) {
-                      // Verificar si el evento aún existe antes de navegar
-                      final doc = await FirebaseFirestore.instance.collection('events').doc(eventId).get();
-                      if (doc.exists && mounted) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => EventDetailPage(
-                              eventId: eventId,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () async {
+                      if (!isRead) {
+                        await _notificationService.markAsRead(notificationId);
+                      }
+                      // Navegar al evento si existe
+                      if (eventId != null && mounted) {
+                        // Verificar si el evento aún existe antes de navegar
+                        final doc = await FirebaseFirestore.instance
+                            .collection('events')
+                            .doc(eventId)
+                            .get();
+                        if (doc.exists && mounted) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  EventDetailPage(eventId: eventId),
+                            ),
+                          );
+                        } else if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('El evento ya no existe'),
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: _getColorForType(type).withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              _getIconForType(type),
+                              color: _getColorForType(type),
+                              size: 24,
                             ),
                           ),
-                        );
-                      } else if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('El evento ya no existe')),
-                        );
-                      }
-                    }
-                  },
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  message,
+                                  style: TextStyle(
+                                    fontWeight: isRead
+                                        ? FontWeight.w500
+                                        : FontWeight.w600,
+                                    fontSize: 15,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  timeAgo,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (!isRead)
+                            Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primary,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               );
             },
@@ -249,10 +470,27 @@ class _NotificationsPageState extends State<NotificationsPage> {
         return Icons.event;
       case 'event_reminder':
         return Icons.alarm;
-        case 'attendance_confirmed':
+      case 'attendance_confirmed':
         return Icons.check_circle;
       default:
         return Icons.notifications;
+    }
+  }
+
+  Color _getColorForType(String type) {
+    switch (type) {
+      case 'event_join':
+        return Colors.green;
+      case 'event_invite':
+        return Colors.indigo;
+      case 'event_update':
+        return Colors.orange;
+      case 'event_reminder':
+        return Colors.purple;
+      case 'attendance_confirmed':
+        return Colors.teal;
+      default:
+        return Colors.blue;
     }
   }
 }

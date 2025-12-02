@@ -15,7 +15,8 @@ import 'events_page.dart';
 import 'explore_events_page.dart';
 import 'event_detail_page.dart';
 import 'notifications_page.dart';
-import 'contacts_page.dart';
+import 'event_chats_list_page.dart';
+import 'contacts_page.dart' as contacts;
 import '../widgets/select_event_for_attendance_dialog.dart';
 import 'attendance_history_page.dart';
 
@@ -210,9 +211,9 @@ class _HomePageState extends State<HomePage> {
               title: const Text('Mis Contactos'),
               onTap: () {
                 Navigator.of(context).pop();
-                Navigator.of(
-                  context,
-                ).push(MaterialPageRoute(builder: (_) => ContactsScreen()));
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => contacts.ContactsScreen()),
+                );
               },
             ),
 
@@ -336,51 +337,45 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           actions: [
-            // Notificaciones con badge
-            StreamBuilder<int>(
-              stream: _notificationService.getUnreadCount(),
-              builder: (context, snapshot) {
-                final unreadCount = snapshot.data ?? 0;
-                return Stack(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.notifications),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const NotificationsPage(),
-                          ),
-                        );
-                      },
-                      tooltip: 'Notificaciones',
-                    ),
-                    if (unreadCount > 0)
-                      Positioned(
-                        right: 8,
-                        top: 8,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: colorScheme.error,
-                            shape: BoxShape.circle,
-                          ),
-                          constraints: const BoxConstraints(
-                            minWidth: 16,
-                            minHeight: 16,
-                          ),
-                          child: Text(
-                            unreadCount > 9 ? '9+' : '$unreadCount',
-                            style: TextStyle(
-                              color: colorScheme.onError,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ),
-                  ],
+            // Notificaciones generales
+            _buildAppBarNotificationButton(
+              colorScheme: colorScheme,
+              icon: Icons.notifications,
+              tooltip: 'Notificaciones',
+              notificationTypes: [
+                'event_invitation',
+                'attendance_confirmed',
+                'event_update',
+              ],
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const NotificationsPage()),
+                );
+              },
+            ),
+            // Mensajes de chats
+            _buildAppBarNotificationButton(
+              colorScheme: colorScheme,
+              icon: Icons.chat_bubble_outline,
+              tooltip: 'Mensajes',
+              notificationTypes: ['event_message'],
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const EventChatsListPage()),
+                );
+              },
+            ),
+            // Solicitudes de amistad
+            _buildAppBarFriendRequestButton(
+              colorScheme: colorScheme,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const contacts.FriendRequestsPage(),
+                  ),
                 );
               },
             ),
@@ -658,7 +653,7 @@ class _HomePageState extends State<HomePage> {
                                     ),
                                   ),
 
-                                  const SizedBox(height: 16),
+                                  const SizedBox(height: 20),
 
                                   // 📅 Eventos de Hoy
                                   _buildTodayEvents(u.uid, colorScheme),
@@ -1993,5 +1988,406 @@ class _HomePageState extends State<HomePage> {
 
     // No hay eventos que cumplan los criterios
     return null;
+  }
+
+  // Widget para botón de notificación en AppBar
+  Widget _buildAppBarNotificationButton({
+    required ColorScheme colorScheme,
+    required IconData icon,
+    required String tooltip,
+    required List<String> notificationTypes,
+    required VoidCallback onPressed,
+  }) {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) {
+      return IconButton(
+        icon: Icon(icon),
+        onPressed: onPressed,
+        tooltip: tooltip,
+      );
+    }
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('notifications')
+          .where('recipientId', isEqualTo: userId)
+          .where('type', whereIn: notificationTypes)
+          .where('read', isEqualTo: false)
+          .snapshots(),
+      builder: (context, snapshot) {
+        final unreadCount = snapshot.hasData ? snapshot.data!.docs.length : 0;
+
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: unreadCount > 0
+                    ? colorScheme.errorContainer.withOpacity(0.2)
+                    : Colors.transparent,
+              ),
+              child: IconButton(
+                icon: Icon(icon),
+                onPressed: onPressed,
+                tooltip: tooltip,
+              ),
+            ),
+            if (unreadCount > 0)
+              Positioned(
+                right: 0,
+                top: 4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.red.shade400, Colors.red.shade600],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.red.withOpacity(0.4),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 18,
+                    minHeight: 18,
+                  ),
+                  child: Text(
+                    unreadCount > 99 ? '99+' : '$unreadCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  } // Widget para botón de solicitudes de amistad en AppBar
+
+  Widget _buildAppBarFriendRequestButton({
+    required ColorScheme colorScheme,
+    required VoidCallback onPressed,
+  }) {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) {
+      return IconButton(
+        icon: const Icon(Icons.person_add_outlined),
+        onPressed: onPressed,
+        tooltip: 'Solicitudes',
+      );
+    }
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('friend_requests')
+          .snapshots(),
+      builder: (context, snapshot) {
+        final unreadCount = snapshot.hasData ? snapshot.data!.docs.length : 0;
+
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: unreadCount > 0
+                    ? colorScheme.primaryContainer.withOpacity(0.3)
+                    : Colors.transparent,
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.person_add_outlined),
+                onPressed: onPressed,
+                tooltip: 'Solicitudes',
+              ),
+            ),
+            if (unreadCount > 0)
+              Positioned(
+                right: 0,
+                top: 4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.blue.shade400, Colors.blue.shade600],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.blue.withOpacity(0.4),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 18,
+                    minHeight: 18,
+                  ),
+                  child: Text(
+                    unreadCount > 99 ? '99+' : '$unreadCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  } // Widget para los botones de notificaciones centralizados
+
+  Widget _buildNotificationButtons(String userId, ColorScheme colorScheme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildNotificationButton(
+              userId: userId,
+              icon: Icons.notifications,
+              label: 'General',
+              notificationType: [
+                'event_invitation',
+                'attendance_confirmed',
+                'event_update',
+              ],
+              color: colorScheme.primary,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const NotificationsPage(),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _buildNotificationButton(
+              userId: userId,
+              icon: Icons.chat_bubble,
+              label: 'Mensajes',
+              notificationType: ['event_message'],
+              color: Colors.blue,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const EventChatsListPage(),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _buildFriendRequestButton(
+              userId: userId,
+              color: Colors.green,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const contacts.FriendRequestsPage(),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Widget individual para cada botón de notificación
+  Widget _buildNotificationButton({
+    required String userId,
+    required IconData icon,
+    required String label,
+    required List<String> notificationType,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('notifications')
+          .where('recipientId', isEqualTo: userId)
+          .where('type', whereIn: notificationType)
+          .where('read', isEqualTo: false)
+          .snapshots(),
+      builder: (context, snapshot) {
+        int unreadCount = 0;
+        if (snapshot.hasData) {
+          unreadCount = snapshot.data!.docs.length;
+        }
+
+        return InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: color.withOpacity(0.3)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Stack(
+                  children: [
+                    Icon(icon, color: color, size: 28),
+                    if (unreadCount > 0)
+                      Positioned(
+                        right: -2,
+                        top: -2,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 18,
+                            minHeight: 18,
+                          ),
+                          child: Text(
+                            unreadCount > 99 ? '99+' : unreadCount.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Widget especial para botón de solicitudes de amistad (usa contactRequests)
+  Widget _buildFriendRequestButton({
+    required String userId,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('contactRequests')
+          .where('toUserId', isEqualTo: userId)
+          .where('status', isEqualTo: 'pending')
+          .snapshots(),
+      builder: (context, snapshot) {
+        int unreadCount = 0;
+        if (snapshot.hasData) {
+          unreadCount = snapshot.data!.docs.length;
+        }
+
+        return InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: color.withOpacity(0.3)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Stack(
+                  children: [
+                    Icon(Icons.person_add, color: color, size: 28),
+                    if (unreadCount > 0)
+                      Positioned(
+                        right: -2,
+                        top: -2,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 18,
+                            minHeight: 18,
+                          ),
+                          child: Text(
+                            unreadCount > 99 ? '99+' : unreadCount.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Solicitudes',
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }
