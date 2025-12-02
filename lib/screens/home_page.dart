@@ -17,6 +17,7 @@ import 'event_detail_page.dart';
 import 'notifications_page.dart';
 import 'contacts_page.dart';
 import '../widgets/select_event_for_attendance_dialog.dart';
+import 'attendance_history_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -60,7 +61,7 @@ class _HomePageState extends State<HomePage> {
     setState(() => _postingArrival = true);
     await showDialog(
       context: context,
-      barrierDismissible: false,  // Evita cerrar tocando fuera
+      barrierDismissible: false, // Evita cerrar tocando fuera
       builder: (_) => const SelectEventForAttendanceDialog(),
     );
     if (mounted) {
@@ -78,9 +79,9 @@ class _HomePageState extends State<HomePage> {
   void _toggleMap() => setState(() => _showMap = !_showMap);
 
   void _openProfile() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const ProfilePage()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const ProfilePage()));
   }
 
   @override
@@ -130,10 +131,11 @@ class _HomePageState extends State<HomePage> {
                 final name = (u?.displayName ?? '').trim();
                 final email = (u?.email ?? '').trim();
                 final hasPhoto = u?.photoURL != null && u!.photoURL!.isNotEmpty;
-                final initial = (name.isNotEmpty
-                    ? name[0]
-                    : (email.isNotEmpty ? email[0] : 'U'))
-                    .toUpperCase();
+                final initial =
+                    (name.isNotEmpty
+                            ? name[0]
+                            : (email.isNotEmpty ? email[0] : 'U'))
+                        .toUpperCase();
 
                 return UserAccountsDrawerHeader(
                   decoration: BoxDecoration(
@@ -141,8 +143,16 @@ class _HomePageState extends State<HomePage> {
                       colors: [
                         colorScheme.primary, // Color base original
                         Theme.of(context).brightness == Brightness.dark
-                            ? Color.lerp(colorScheme.primary, Colors.black, 0.6)!
-                            : Color.lerp(colorScheme.primary, Colors.white, 0.6)!,
+                            ? Color.lerp(
+                                colorScheme.primary,
+                                Colors.black,
+                                0.6,
+                              )!
+                            : Color.lerp(
+                                colorScheme.primary,
+                                Colors.white,
+                                0.6,
+                              )!,
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -165,18 +175,19 @@ class _HomePageState extends State<HomePage> {
                     borderRadius: BorderRadius.circular(40),
                     child: CircleAvatar(
                       backgroundColor: colorScheme.surface,
-                      backgroundImage:
-                      hasPhoto ? NetworkImage(u.photoURL!) : null,
+                      backgroundImage: hasPhoto
+                          ? NetworkImage(u.photoURL!)
+                          : null,
                       child: hasPhoto
                           ? null
                           : Text(
-                        initial,
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.primary,
-                        ),
-                      ),
+                              initial,
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.primary,
+                              ),
+                            ),
                     ),
                   ),
                 );
@@ -199,9 +210,9 @@ class _HomePageState extends State<HomePage> {
               title: const Text('Mis Contactos'),
               onTap: () {
                 Navigator.of(context).pop();
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => ContactsScreen()),
-                );
+                Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => ContactsScreen()));
               },
             ),
 
@@ -210,9 +221,9 @@ class _HomePageState extends State<HomePage> {
               title: const Text('Mis eventos'),
               onTap: () {
                 Navigator.of(context).pop();
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const EventsPage()),
-                );
+                Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => const EventsPage()));
               },
             ),
             ListTile(
@@ -235,8 +246,10 @@ class _HomePageState extends State<HomePage> {
                   final count = snapshot.data ?? 0;
                   if (count == 0) return const SizedBox.shrink();
                   return Container(
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: colorScheme.error,
                       borderRadius: BorderRadius.circular(12),
@@ -267,7 +280,8 @@ class _HomePageState extends State<HomePage> {
                 Navigator.of(context).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                      content: Text('Contacta soporte@connixia.app')),
+                    content: Text('Contacta soporte@connixia.app'),
+                  ),
                 );
               },
             ),
@@ -275,8 +289,10 @@ class _HomePageState extends State<HomePage> {
             const Divider(),
             ListTile(
               leading: Icon(Icons.logout, color: colorScheme.error),
-              title: Text('Cerrar sesión',
-                  style: TextStyle(color: colorScheme.error)),
+              title: Text(
+                'Cerrar sesión',
+                style: TextStyle(color: colorScheme.error),
+              ),
               onTap: _auth.signOut,
             ),
             const SizedBox(height: 8),
@@ -401,7 +417,10 @@ class _HomePageState extends State<HomePage> {
                             CircleAvatar(
                               radius: 30,
                               backgroundColor: colorScheme.primaryContainer,
-                              child: Icon(Icons.person, color: colorScheme.onPrimaryContainer),
+                              child: Icon(
+                                Icons.person,
+                                color: colorScheme.onPrimaryContainer,
+                              ),
                             ),
                             const SizedBox(width: 16),
                             Expanded(
@@ -433,12 +452,16 @@ class _HomePageState extends State<HomePage> {
                                 .get(),
                             builder: (context, firestoreSnapshot) {
                               String? photoUrl;
-                              if (firestoreSnapshot.hasData && firestoreSnapshot.data!.exists) {
-                                final data = firestoreSnapshot.data!.data() as Map<String, dynamic>;
+                              if (firestoreSnapshot.hasData &&
+                                  firestoreSnapshot.data!.exists) {
+                                final data =
+                                    firestoreSnapshot.data!.data()
+                                        as Map<String, dynamic>;
                                 photoUrl = data['photoURL'];
                               }
 
-                              final hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
+                              final hasPhoto =
+                                  photoUrl != null && photoUrl.isNotEmpty;
                               final userName = u.displayName ?? 'Usuario';
                               final userEmail = u.email ?? '';
 
@@ -456,24 +479,31 @@ class _HomePageState extends State<HomePage> {
                                           children: [
                                             CircleAvatar(
                                               radius: 35,
-                                              backgroundColor: colorScheme.primaryContainer,
-                                              backgroundImage: hasPhoto ? NetworkImage(photoUrl) : null,
+                                              backgroundColor:
+                                                  colorScheme.primaryContainer,
+                                              backgroundImage: hasPhoto
+                                                  ? NetworkImage(photoUrl)
+                                                  : null,
                                               child: hasPhoto
                                                   ? null
                                                   : Text(
-                                                _userInitial(),
-                                                style: TextStyle(
-                                                  fontSize: 28,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: colorScheme.onPrimaryContainer,
-                                                ),
-                                              ),
+                                                      _userInitial(),
+                                                      style: TextStyle(
+                                                        fontSize: 28,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color: colorScheme
+                                                            .onPrimaryContainer,
+                                                      ),
+                                                    ),
                                             ),
                                             Positioned(
                                               bottom: 0,
                                               right: 0,
                                               child: Container(
-                                                padding: const EdgeInsets.all(4),
+                                                padding: const EdgeInsets.all(
+                                                  4,
+                                                ),
                                                 decoration: BoxDecoration(
                                                   color: colorScheme.primary,
                                                   shape: BoxShape.circle,
@@ -495,22 +525,30 @@ class _HomePageState extends State<HomePage> {
                                       const SizedBox(width: 16),
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text(
                                               userName,
-                                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                                fontWeight: FontWeight.bold,
-                                              ),
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .titleLarge
+                                                  ?.copyWith(
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
                                               overflow: TextOverflow.ellipsis,
                                             ),
                                             const SizedBox(height: 4),
                                             if (userEmail.isNotEmpty)
                                               Text(
                                                 userEmail,
-                                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                                  color: colorScheme.onSurfaceVariant,
-                                                ),
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodySmall
+                                                    ?.copyWith(
+                                                      color: colorScheme
+                                                          .onSurfaceVariant,
+                                                    ),
                                                 overflow: TextOverflow.ellipsis,
                                               ),
                                           ],
@@ -525,55 +563,98 @@ class _HomePageState extends State<HomePage> {
                                   Container(
                                     padding: const EdgeInsets.all(24),
                                     decoration: BoxDecoration(
-                                      color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                                      color: colorScheme.surfaceContainerHighest
+                                          .withOpacity(0.3),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
-                                    child: Row(
-                                      children: [
-                                        Expanded(
-                                          child: InkWell(
-                                            onTap: () {
-                                              Navigator.of(context).push(
-                                                MaterialPageRoute(
-                                                  builder: (_) => const EventsPage(),
+                                    child: FutureBuilder<int>(
+                                      future: _getAttendedEventsCount(u.uid),
+                                      builder: (context, attendedSnapshot) {
+                                        final attendedCount =
+                                            attendedSnapshot.data ?? 0;
+
+                                        return Row(
+                                          children: [
+                                            Expanded(
+                                              child: InkWell(
+                                                onTap: () {
+                                                  Navigator.of(context).push(
+                                                    MaterialPageRoute(
+                                                      builder: (_) =>
+                                                          const EventsPage(),
+                                                    ),
+                                                  );
+                                                },
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                child: _buildStat(
+                                                  context,
+                                                  Icons.event,
+                                                  '${myEvents.length}',
+                                                  'Participando',
+                                                  colorScheme.primary,
                                                 ),
-                                              );
-                                            },
-                                            borderRadius: BorderRadius.circular(8),
-                                            child: _buildStat(
-                                              context,
-                                              Icons.event,
-                                              '${myEvents.length}',
-                                              'Participando',
-                                              colorScheme.primary,
+                                              ),
                                             ),
-                                          ),
-                                        ),
-                                        Container(
-                                          width: 1,
-                                          height: 50,
-                                          color: colorScheme.outlineVariant,
-                                        ),
-                                        Expanded(
-                                          child: InkWell(
-                                            onTap: () {
-                                              Navigator.of(context).push(
-                                                MaterialPageRoute(
-                                                    builder: (_) => const EventsPage(filterCreatedOnly: true),
+                                            Container(
+                                              width: 1,
+                                              height: 50,
+                                              color: colorScheme.outlineVariant,
+                                            ),
+                                            Expanded(
+                                              child: InkWell(
+                                                onTap: () {
+                                                  Navigator.of(context).push(
+                                                    MaterialPageRoute(
+                                                      builder: (_) =>
+                                                          const EventsPage(
+                                                            filterCreatedOnly:
+                                                                true,
+                                                          ),
+                                                    ),
+                                                  );
+                                                },
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                child: _buildStat(
+                                                  context,
+                                                  Icons.create,
+                                                  '$createdEvents',
+                                                  'Creados',
+                                                  colorScheme.secondary
+                                                      .withOpacity(0.6),
                                                 ),
-                                              );
-                                            },
-                                            borderRadius: BorderRadius.circular(8),
-                                            child: _buildStat(
-                                              context,
-                                              Icons.create,
-                                              '$createdEvents',
-                                              'Creados',
-                                              colorScheme.secondary.withOpacity(0.6),
+                                              ),
                                             ),
-                                          ),
-                                        ),
-                                      ],
+                                            Container(
+                                              width: 1,
+                                              height: 50,
+                                              color: colorScheme.outlineVariant,
+                                            ),
+                                            Expanded(
+                                              child: InkWell(
+                                                onTap: () {
+                                                  Navigator.of(context).push(
+                                                    MaterialPageRoute(
+                                                      builder: (_) =>
+                                                          const AttendanceHistoryPage(),
+                                                    ),
+                                                  );
+                                                },
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                child: _buildStat(
+                                                  context,
+                                                  Icons.check_circle,
+                                                  '$attendedCount',
+                                                  'Asistidos',
+                                                  Colors.green,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        );
+                                      },
                                     ),
                                   ),
 
@@ -586,22 +667,35 @@ class _HomePageState extends State<HomePage> {
                                   StreamBuilder<QuerySnapshot>(
                                     stream: FirebaseFirestore.instance
                                         .collection('events')
-                                        .where('participants', arrayContains: u.uid)
-                                        .where('date', isGreaterThan: Timestamp.now())
+                                        .where(
+                                          'participants',
+                                          arrayContains: u.uid,
+                                        )
+                                        .where(
+                                          'date',
+                                          isGreaterThan: Timestamp.now(),
+                                        )
                                         .orderBy('date')
                                         .limit(1)
                                         .snapshots(),
                                     builder: (context, nextSnapshot) {
-                                      if (!nextSnapshot.hasData || nextSnapshot.data!.docs.isEmpty) {
+                                      if (!nextSnapshot.hasData ||
+                                          nextSnapshot.data!.docs.isEmpty) {
                                         return const SizedBox.shrink();
                                       }
 
-                                      final nextEvent = nextSnapshot.data!.docs.first;
-                                      final data = nextEvent.data() as Map<String, dynamic>;
+                                      final nextEvent =
+                                          nextSnapshot.data!.docs.first;
+                                      final data =
+                                          nextEvent.data()
+                                              as Map<String, dynamic>;
                                       final title = data['title'] ?? 'Evento';
-                                      final eventDate = (data['date'] as Timestamp).toDate();
+                                      final eventDate =
+                                          (data['date'] as Timestamp).toDate();
                                       final now = DateTime.now();
-                                      final difference = eventDate.difference(now);
+                                      final difference = eventDate.difference(
+                                        now,
+                                      );
 
                                       String timeLeft;
                                       Color countdownColor;
@@ -628,9 +722,12 @@ class _HomePageState extends State<HomePage> {
                                               colorScheme.secondaryContainer,
                                             ],
                                           ),
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                           border: Border.all(
-                                            color: colorScheme.primary.withOpacity(0.3),
+                                            color: colorScheme.primary
+                                                .withOpacity(0.3),
                                             width: 1,
                                           ),
                                         ),
@@ -638,24 +735,41 @@ class _HomePageState extends State<HomePage> {
                                           onTap: () {
                                             Navigator.of(context).push(
                                               MaterialPageRoute(
-                                                builder: (_) => EventDetailPage(eventId: nextEvent.id),
+                                                builder: (_) => EventDetailPage(
+                                                  eventId: nextEvent.id,
+                                                ),
                                               ),
                                             );
                                           },
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                           child: Row(
                                             children: [
                                               Container(
-                                                padding: const EdgeInsets.all(8),
+                                                padding: const EdgeInsets.all(
+                                                  8,
+                                                ),
                                                 decoration: BoxDecoration(
-                                                  color: Theme.of(context).brightness == Brightness.light
-                                                      ? Colors.white.withOpacity(0.2)
-                                                      : colorScheme.primary.withOpacity(0.15),
-                                                  borderRadius: BorderRadius.circular(12),
+                                                  color:
+                                                      Theme.of(
+                                                            context,
+                                                          ).brightness ==
+                                                          Brightness.light
+                                                      ? Colors.white
+                                                            .withOpacity(0.2)
+                                                      : colorScheme.primary
+                                                            .withOpacity(0.15),
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
                                                 ),
                                                 child: Icon(
                                                   Icons.alarm,
-                                                  color: Theme.of(context).brightness == Brightness.light
+                                                  color:
+                                                      Theme.of(
+                                                            context,
+                                                          ).brightness ==
+                                                          Brightness.light
                                                       ? Colors.white
                                                       : colorScheme.primary,
                                                   size: 24,
@@ -664,56 +778,98 @@ class _HomePageState extends State<HomePage> {
                                               const SizedBox(width: 12),
                                               Expanded(
                                                 child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
                                                   children: [
                                                     Text(
                                                       'Próximo evento',
-                                                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                                        color: Theme.of(context).brightness == Brightness.light
-                                                            ? colorScheme.secondary.withOpacity(0.7)
-                                                            : colorScheme.primary,
-                                                        fontWeight: FontWeight.w600,
-                                                      ),
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .labelMedium
+                                                          ?.copyWith(
+                                                            color:
+                                                                Theme.of(
+                                                                      context,
+                                                                    ).brightness ==
+                                                                    Brightness
+                                                                        .light
+                                                                ? colorScheme
+                                                                      .secondary
+                                                                      .withOpacity(
+                                                                        0.7,
+                                                                      )
+                                                                : colorScheme
+                                                                      .primary,
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                          ),
                                                     ),
                                                     const SizedBox(height: 4),
                                                     Text(
                                                       title,
-                                                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                                        color: Theme.of(context).brightness == Brightness.light
-                                                            ? Colors.white
-                                                            : Colors.white.withOpacity(0.8),
-                                                        fontWeight: FontWeight.w700,
-                                                      ),
-                                                      overflow: TextOverflow.ellipsis,
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .titleMedium
+                                                          ?.copyWith(
+                                                            color:
+                                                                Theme.of(
+                                                                      context,
+                                                                    ).brightness ==
+                                                                    Brightness
+                                                                        .light
+                                                                ? Colors.white
+                                                                : Colors.white
+                                                                      .withOpacity(
+                                                                        0.8,
+                                                                      ),
+                                                            fontWeight:
+                                                                FontWeight.w700,
+                                                          ),
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
                                                       maxLines: 1,
                                                     ),
                                                     const SizedBox(height: 2),
                                                     Text(
                                                       '${eventDate.day}/${eventDate.month}/${eventDate.year} a las ${eventDate.hour.toString().padLeft(2, '0')}:${eventDate.minute.toString().padLeft(2, '0')}',
-                                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                                        color: colorScheme.onSurfaceVariant,
-                                                      ),
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .bodySmall
+                                                          ?.copyWith(
+                                                            color: colorScheme
+                                                                .onSurfaceVariant,
+                                                          ),
                                                     ),
                                                   ],
                                                 ),
                                               ),
                                               Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 16,
+                                                      vertical: 8,
+                                                    ),
                                                 decoration: BoxDecoration(
                                                   color: countdownColor,
-                                                  borderRadius: BorderRadius.circular(20),
+                                                  borderRadius:
+                                                      BorderRadius.circular(20),
                                                   boxShadow: [
                                                     BoxShadow(
-                                                      color: countdownColor.withOpacity(0.3),
+                                                      color: countdownColor
+                                                          .withOpacity(0.3),
                                                       blurRadius: 8,
-                                                      offset: const Offset(0, 2),
+                                                      offset: const Offset(
+                                                        0,
+                                                        2,
+                                                      ),
                                                     ),
                                                   ],
                                                 ),
                                                 child: Text(
                                                   timeLeft,
                                                   style: TextStyle(
-                                                    color: colorScheme.onPrimary,
+                                                    color:
+                                                        colorScheme.onPrimary,
                                                     fontWeight: FontWeight.bold,
                                                     fontSize: 16,
                                                   ),
@@ -728,29 +884,39 @@ class _HomePageState extends State<HomePage> {
 
                                   const SizedBox(height: 12),
 
-// 📩 Invitaciones a Eventos Pendientes
+                                  // 📩 Invitaciones a Eventos Pendientes
                                   StreamBuilder<QuerySnapshot>(
                                     stream: FirebaseFirestore.instance
                                         .collection('events')
                                         .where('invited', arrayContains: u.uid)
                                         .snapshots(),
                                     builder: (context, inviteSnapshot) {
-                                      if (!inviteSnapshot.hasData) return const SizedBox.shrink();
+                                      if (!inviteSnapshot.hasData)
+                                        return const SizedBox.shrink();
 
-                                      final allInvites = inviteSnapshot.data!.docs;
-                                      final pendingInvites = allInvites.where((doc) {
-                                        final data = doc.data() as Map<String, dynamic>;
-                                        final participants = List.from(data['participants'] ?? []);
+                                      final allInvites =
+                                          inviteSnapshot.data!.docs;
+                                      final pendingInvites = allInvites.where((
+                                        doc,
+                                      ) {
+                                        final data =
+                                            doc.data() as Map<String, dynamic>;
+                                        final participants = List.from(
+                                          data['participants'] ?? [],
+                                        );
                                         return !participants.contains(u.uid);
                                       }).toList();
 
-                                      if (pendingInvites.isEmpty) return const SizedBox.shrink();
+                                      if (pendingInvites.isEmpty)
+                                        return const SizedBox.shrink();
 
                                       return Container(
                                         padding: const EdgeInsets.all(12),
                                         decoration: BoxDecoration(
                                           color: colorScheme.tertiaryContainer,
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                           border: Border.all(
                                             color: colorScheme.tertiary,
                                             width: 1,
@@ -761,15 +927,23 @@ class _HomePageState extends State<HomePage> {
                                             showModalBottomSheet(
                                               context: context,
                                               isScrollControlled: true,
-                                              backgroundColor: Colors.transparent,
-                                              builder: (_) => _buildPendingInvitesSheet(pendingInvites),
+                                              backgroundColor:
+                                                  Colors.transparent,
+                                              builder: (_) =>
+                                                  _buildPendingInvitesSheet(
+                                                    pendingInvites,
+                                                  ),
                                             );
                                           },
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                           child: Row(
                                             children: [
                                               Container(
-                                                padding: const EdgeInsets.all(8),
+                                                padding: const EdgeInsets.all(
+                                                  8,
+                                                ),
                                                 decoration: BoxDecoration(
                                                   color: colorScheme.tertiary,
                                                   shape: BoxShape.circle,
@@ -783,20 +957,30 @@ class _HomePageState extends State<HomePage> {
                                               const SizedBox(width: 12),
                                               Expanded(
                                                 child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
                                                   children: [
                                                     Text(
                                                       'Invitaciones a eventos',
-                                                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                                        color: colorScheme.tertiary,
-                                                        fontWeight: FontWeight.w600,
-                                                      ),
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .labelMedium
+                                                          ?.copyWith(
+                                                            color: colorScheme
+                                                                .tertiary,
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                          ),
                                                     ),
                                                     Text(
                                                       'Tienes ${pendingInvites.length} ${pendingInvites.length == 1 ? 'invitación pendiente' : 'invitaciones pendientes'}',
-                                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                                        color: colorScheme.onTertiaryContainer,
-                                                      ),
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .bodySmall
+                                                          ?.copyWith(
+                                                            color: colorScheme
+                                                                .onTertiaryContainer,
+                                                          ),
                                                     ),
                                                   ],
                                                 ),
@@ -815,7 +999,7 @@ class _HomePageState extends State<HomePage> {
 
                                   const SizedBox(height: 12),
 
-// 👥 Invitaciones de Contactos Pendientes
+                                  // 👥 Invitaciones de Contactos Pendientes
                                   StreamBuilder<QuerySnapshot>(
                                     stream: FirebaseFirestore.instance
                                         .collection('contactRequests')
@@ -823,17 +1007,22 @@ class _HomePageState extends State<HomePage> {
                                         .where('status', isEqualTo: 'pending')
                                         .snapshots(),
                                     builder: (context, contactSnapshot) {
-                                      if (!contactSnapshot.hasData) return const SizedBox.shrink();
+                                      if (!contactSnapshot.hasData)
+                                        return const SizedBox.shrink();
 
-                                      final pendingRequests = contactSnapshot.data!.docs;
+                                      final pendingRequests =
+                                          contactSnapshot.data!.docs;
 
-                                      if (pendingRequests.isEmpty) return const SizedBox.shrink();
+                                      if (pendingRequests.isEmpty)
+                                        return const SizedBox.shrink();
 
                                       return Container(
                                         padding: const EdgeInsets.all(12),
                                         decoration: BoxDecoration(
                                           color: colorScheme.secondaryContainer,
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                           border: Border.all(
                                             color: colorScheme.secondary,
                                             width: 1,
@@ -844,42 +1033,61 @@ class _HomePageState extends State<HomePage> {
                                             showModalBottomSheet(
                                               context: context,
                                               isScrollControlled: true,
-                                              backgroundColor: Colors.transparent,
-                                              builder: (_) => _buildPendingContactsSheet(pendingRequests),
+                                              backgroundColor:
+                                                  Colors.transparent,
+                                              builder: (_) =>
+                                                  _buildPendingContactsSheet(
+                                                    pendingRequests,
+                                                  ),
                                             );
                                           },
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                           child: Row(
                                             children: [
                                               Container(
-                                                padding: const EdgeInsets.all(8),
+                                                padding: const EdgeInsets.all(
+                                                  8,
+                                                ),
                                                 decoration: BoxDecoration(
                                                   color: colorScheme.secondary,
                                                   shape: BoxShape.circle,
                                                 ),
                                                 child: Icon(
                                                   Icons.person_add,
-                                                  color: colorScheme.onSecondary,
+                                                  color:
+                                                      colorScheme.onSecondary,
                                                   size: 20,
                                                 ),
                                               ),
                                               const SizedBox(width: 12),
                                               Expanded(
                                                 child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
                                                   children: [
                                                     Text(
                                                       'Solicitudes de contacto',
-                                                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                                        color: colorScheme.secondary,
-                                                        fontWeight: FontWeight.w600,
-                                                      ),
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .labelMedium
+                                                          ?.copyWith(
+                                                            color: colorScheme
+                                                                .secondary,
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                          ),
                                                     ),
                                                     Text(
                                                       'Tienes ${pendingRequests.length} ${pendingRequests.length == 1 ? 'solicitud pendiente' : 'solicitudes pendientes'}',
-                                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                                        color: colorScheme.onSecondaryContainer,
-                                                      ),
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .bodySmall
+                                                          ?.copyWith(
+                                                            color: colorScheme
+                                                                .onSecondaryContainer,
+                                                          ),
                                                     ),
                                                   ],
                                                 ),
@@ -896,6 +1104,13 @@ class _HomePageState extends State<HomePage> {
                                     },
                                   ),
 
+                                  const SizedBox(height: 12),
+
+                                  // ✅ Últimos Eventos Asistidos
+                                  _buildRecentAttendedEvents(
+                                    u.uid,
+                                    colorScheme,
+                                  ),
                                 ],
                               );
                             },
@@ -917,10 +1132,16 @@ class _HomePageState extends State<HomePage> {
                   leading: Icon(Icons.explore, color: colorScheme.primary),
                   title: const Text('Explorar eventos'),
                   subtitle: const Text('Descubre eventos cerca de ti'),
-                  trailing: Icon(Icons.arrow_forward_ios, size: 14, color: colorScheme.primary),
+                  trailing: Icon(
+                    Icons.arrow_forward_ios,
+                    size: 14,
+                    color: colorScheme.primary,
+                  ),
                   onTap: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const ExploreEventsPage()),
+                      MaterialPageRoute(
+                        builder: (_) => const ExploreEventsPage(),
+                      ),
                     );
                   },
                 ),
@@ -932,16 +1153,19 @@ class _HomePageState extends State<HomePage> {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: ListTile(
-                  leading: Icon(Icons.check_circle_outline, color: colorScheme.primary),
+                  leading: Icon(
+                    Icons.check_circle_outline,
+                    color: colorScheme.primary,
+                  ),
                   title: const Text('Confirmar llegada'),
                   subtitle: const Text('También puedes agitar el teléfono'),
                   onTap: _onArrivedShake,
                   trailing: _postingArrival
                       ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
                       : const Icon(Icons.navigate_next),
                 ),
               ),
@@ -955,7 +1179,11 @@ class _HomePageState extends State<HomePage> {
                   leading: Icon(Icons.event, color: colorScheme.primary),
                   title: const Text('Eventos'),
                   subtitle: const Text('Administra tus puntos de encuentro'),
-                  trailing: Icon(Icons.arrow_forward_ios, size: 14, color: colorScheme.primary),
+                  trailing: Icon(
+                    Icons.arrow_forward_ios,
+                    size: 14,
+                    color: colorScheme.primary,
+                  ),
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => const EventsPage()),
@@ -970,12 +1198,19 @@ class _HomePageState extends State<HomePage> {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: ListTile(
-                  leading: Icon(Icons.notifications, color: colorScheme.primary),
+                  leading: Icon(
+                    Icons.notifications,
+                    color: colorScheme.primary,
+                  ),
                   title: const Text('Notificaciones'),
-                  subtitle: const Text('Mantente informado de las últimas noticias'),
+                  subtitle: const Text(
+                    'Mantente informado de las últimas noticias',
+                  ),
                   onTap: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const NotificationsPage()),
+                      MaterialPageRoute(
+                        builder: (_) => const NotificationsPage(),
+                      ),
                     );
                   },
                 ),
@@ -1018,19 +1253,18 @@ class _HomePageState extends State<HomePage> {
             Marker(
               markerId: const MarkerId('mi_ubicacion'),
               position: _myPos!,
-              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueAzure,
+              ),
               infoWindow: const InfoWindow(title: 'Tu ubicación'),
             ),
             ...eventMarkers,
           },
-          onTap: (position) {
-
-          },
+          onTap: (position) {},
         );
       },
     );
   }
-
 
   Set<Marker> _buildEventMarkers(List<DocumentSnapshot> events) {
     final markers = <Marker>{};
@@ -1076,7 +1310,8 @@ class _HomePageState extends State<HomePage> {
               ),
               infoWindow: InfoWindow(
                 title: title,
-                snippet: '${participants.length} asistentes • ${distance.toStringAsFixed(1)} km',
+                snippet:
+                    '${participants.length} asistentes • ${distance.toStringAsFixed(1)} km',
               ),
               onTap: () {
                 Navigator.of(context).push(
@@ -1094,7 +1329,6 @@ class _HomePageState extends State<HomePage> {
     return markers;
   }
 
-
   String _userInitial() {
     final u = FirebaseAuth.instance.currentUser;
     final name = (u?.displayName ?? '').trim();
@@ -1103,7 +1337,7 @@ class _HomePageState extends State<HomePage> {
     return source.characters.first.toUpperCase();
   }
 
-// Modal para invitaciones de eventos
+  // Modal para invitaciones de eventos
   Widget _buildPendingInvitesSheet(List<DocumentSnapshot> invites) {
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -1127,9 +1361,9 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 16),
           Text(
             'Invitaciones a Eventos',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           ...invites.map((doc) {
@@ -1180,8 +1414,9 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-//_openProfile
-// Modal para solicitudes de contacto
+
+  //_openProfile
+  // Modal para solicitudes de contacto
   Widget _buildPendingContactsSheet(List<DocumentSnapshot> requests) {
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -1205,9 +1440,9 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 16),
           Text(
             'Solicitudes de Contacto',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           ...requests.map((doc) {
@@ -1215,13 +1450,17 @@ class _HomePageState extends State<HomePage> {
             final senderId = data['senderId'];
 
             return FutureBuilder<DocumentSnapshot>(
-              future: FirebaseFirestore.instance.collection('users').doc(senderId).get(),
+              future: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(senderId)
+                  .get(),
               builder: (context, userSnapshot) {
                 if (!userSnapshot.hasData) {
                   return const ListTile(title: Text('Cargando...'));
                 }
 
-                final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
+                final userData =
+                    userSnapshot.data!.data() as Map<String, dynamic>?;
                 final name = userData?['displayName'] ?? 'Usuario';
                 final email = userData?['email'] ?? '';
 
@@ -1266,7 +1505,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-// Aceptar invitación a evento
+  // Aceptar invitación a evento
   Future<void> _acceptEventInvite(String eventId) async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
     await FirebaseFirestore.instance.collection('events').doc(eventId).update({
@@ -1275,7 +1514,7 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-// Rechazar invitación a evento
+  // Rechazar invitación a evento
   Future<void> _rejectEventInvite(String eventId) async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
     await FirebaseFirestore.instance.collection('events').doc(eventId).update({
@@ -1283,7 +1522,7 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-// Aceptar solicitud de contacto
+  // Aceptar solicitud de contacto
   Future<void> _acceptContactRequest(String requestId, String senderId) async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
 
@@ -1291,11 +1530,15 @@ class _HomePageState extends State<HomePage> {
       // Agregar a contactos mutuos
       transaction.update(
         FirebaseFirestore.instance.collection('users').doc(uid),
-        {'contacts': FieldValue.arrayUnion([senderId])},
+        {
+          'contacts': FieldValue.arrayUnion([senderId]),
+        },
       );
       transaction.update(
         FirebaseFirestore.instance.collection('users').doc(senderId),
-        {'contacts': FieldValue.arrayUnion([uid])},
+        {
+          'contacts': FieldValue.arrayUnion([uid]),
+        },
       );
 
       // Actualizar estado de solicitud
@@ -1306,15 +1549,21 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-// Rechazar solicitud de contacto
+  // Rechazar solicitud de contacto
   Future<void> _rejectContactRequest(String requestId) async {
-    await FirebaseFirestore.instance.collection('contactRequests').doc(requestId).update({
-      'status': 'rejected',
-    });
+    await FirebaseFirestore.instance
+        .collection('contactRequests')
+        .doc(requestId)
+        .update({'status': 'rejected'});
   }
 
-
-  Widget _buildStat(BuildContext context, IconData icon, String value, String label, Color color) {
+  Widget _buildStat(
+    BuildContext context,
+    IconData icon,
+    String value,
+    String label,
+    Color color,
+  ) {
     return Column(
       children: [
         Container(
@@ -1345,4 +1594,232 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // Obtener conteo de eventos asistidos
+  Future<int> _getAttendedEventsCount(String userId) async {
+    try {
+      final eventsQuery = await FirebaseFirestore.instance
+          .collection('events')
+          .where('participants', arrayContains: userId)
+          .get();
+
+      int count = 0;
+      for (var eventDoc in eventsQuery.docs) {
+        final attendanceDoc = await FirebaseFirestore.instance
+            .collection('events')
+            .doc(eventDoc.id)
+            .collection('attendance')
+            .doc(userId)
+            .get();
+
+        if (attendanceDoc.exists &&
+            attendanceDoc.data()?['status'] == 'confirmed') {
+          count++;
+        }
+      }
+      return count;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  // Widget de últimos eventos asistidos
+  Widget _buildRecentAttendedEvents(String userId, ColorScheme colorScheme) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _getRecentAttendedEvents(userId),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final recentEvents = snapshot.data!;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.green.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.green.withOpacity(0.3), width: 1),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.green,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.check_circle,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Eventos Asistidos',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green.shade700,
+                                ),
+                          ),
+                          Text(
+                            'Últimos eventos confirmados',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: Colors.green.shade600),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              ...recentEvents.map((eventData) {
+                final title = eventData['title'] as String;
+                final date = eventData['date'] as DateTime;
+                final eventId = eventData['eventId'] as String;
+
+                return ListTile(
+                  dense: true,
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.event_available,
+                      color: Colors.green.shade700,
+                      size: 20,
+                    ),
+                  ),
+                  title: Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(
+                    '${date.day}/${date.month}/${date.year}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  trailing: Icon(
+                    Icons.chevron_right,
+                    color: Colors.green.shade600,
+                    size: 20,
+                  ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => EventDetailPage(eventId: eventId),
+                      ),
+                    );
+                  },
+                );
+              }).toList(),
+              const Divider(height: 1),
+              InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const AttendanceHistoryPage(),
+                    ),
+                  );
+                },
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(16),
+                  bottomRight: Radius.circular(16),
+                ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  alignment: Alignment.center,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Ver historial completo',
+                        style: TextStyle(
+                          color: Colors.green.shade700,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.arrow_forward,
+                        size: 18,
+                        color: Colors.green.shade700,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Obtener últimos 3 eventos asistidos
+  Future<List<Map<String, dynamic>>> _getRecentAttendedEvents(
+    String userId,
+  ) async {
+    try {
+      final eventsQuery = await FirebaseFirestore.instance
+          .collection('events')
+          .where('participants', arrayContains: userId)
+          .get();
+
+      List<Map<String, dynamic>> attendedEvents = [];
+
+      for (var eventDoc in eventsQuery.docs) {
+        final attendanceDoc = await FirebaseFirestore.instance
+            .collection('events')
+            .doc(eventDoc.id)
+            .collection('attendance')
+            .doc(userId)
+            .get();
+
+        if (attendanceDoc.exists &&
+            attendanceDoc.data()?['status'] == 'confirmed') {
+          final eventData = eventDoc.data();
+          final confirmedAt =
+              (attendanceDoc.data()?['confirmedAt'] as Timestamp?)?.toDate();
+
+          attendedEvents.add({
+            'eventId': eventDoc.id,
+            'title': eventData['title'] ?? 'Evento',
+            'date': (eventData['date'] as Timestamp).toDate(),
+            'confirmedAt': confirmedAt ?? DateTime.now(),
+          });
+        }
+      }
+
+      // Ordenar por fecha de confirmación (más reciente primero)
+      attendedEvents.sort(
+        (a, b) => (b['confirmedAt'] as DateTime).compareTo(
+          a['confirmedAt'] as DateTime,
+        ),
+      );
+
+      // Retornar solo los últimos 3
+      return attendedEvents.take(3).toList();
+    } catch (e) {
+      return [];
+    }
+  }
 }
