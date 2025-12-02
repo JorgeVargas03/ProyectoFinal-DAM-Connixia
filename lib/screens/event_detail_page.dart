@@ -8,6 +8,8 @@ import '../controllers/event_controller.dart';
 import 'location_picker_page.dart';
 import '../widgets/invite_friends_dialog.dart';
 import 'user_profile_page.dart';
+import 'event_chat_page.dart';
+import '../services/chat_service.dart';
 
 class EventDetailPage extends StatefulWidget {
   final String eventId;
@@ -103,6 +105,59 @@ class _EventDetailPageState extends State<EventDetailPage> {
             appBar: AppBar(
               title: const Text('Detalles'),
               actions: [
+                // BOTÓN CHAT (Visible para todos los participantes)
+                FutureBuilder<int>(
+                  future: ChatService().getUnreadMessageCount(
+                    widget.eventId,
+                    _currentUser?.uid ?? '',
+                  ),
+                  builder: (context, unreadSnapshot) {
+                    final unreadCount = unreadSnapshot.data ?? 0;
+                    return Stack(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chat_bubble_outline),
+                          tooltip: 'Chat del evento',
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => EventChatPage(
+                                  eventId: widget.eventId,
+                                  eventTitle: title,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        if (unreadCount > 0)
+                          Positioned(
+                            right: 8,
+                            top: 8,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              constraints: const BoxConstraints(
+                                minWidth: 16,
+                                minHeight: 16,
+                              ),
+                              child: Text(
+                                unreadCount > 99 ? '99+' : '$unreadCount',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
                 // BOTÓN EDITAR (Solo visible para el creador)
                 if (isCreator)
                   IconButton(
