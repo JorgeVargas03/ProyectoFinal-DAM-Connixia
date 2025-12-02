@@ -203,14 +203,18 @@ class _UserProfilePageState extends State<UserProfilePage> {
                 flexibleSpace: FlexibleSpaceBar(
                   title: Text(
                     name,
-                    style: const TextStyle(
+                    style: TextStyle(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.black
+                          : Colors.white,
                       fontWeight: FontWeight.bold,
                       shadows: [
-                        Shadow(
-                          offset: Offset(0, 1),
-                          blurRadius: 3,
-                          color: Colors.black45,
-                        ),
+                        if (Theme.of(context).brightness == Brightness.dark)
+                          const Shadow(
+                            offset: Offset(0, 1),
+                            blurRadius: 4,
+                            color: Colors.black45,
+                          ),
                       ],
                     ),
                   ),
@@ -223,8 +227,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
-                              Theme.of(context).colorScheme.primaryContainer,
                               Theme.of(context).colorScheme.primary,
+                              Theme.of(context).colorScheme.primaryContainer,
                             ],
                           ),
                         ),
@@ -236,7 +240,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
                             end: Alignment.bottomCenter,
                             colors: [
                               Colors.transparent,
-                              Colors.black.withOpacity(0.7),
+                              (Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.black
+                                  : Colors.white).withOpacity(0.5),
                             ],
                           ),
                         ),

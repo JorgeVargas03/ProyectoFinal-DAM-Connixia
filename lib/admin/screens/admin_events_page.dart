@@ -310,38 +310,53 @@ class _EventCard extends StatelessWidget {
           children: [
             if (description.isNotEmpty)
               Text(description, maxLines: 2, overflow: TextOverflow.ellipsis),
-            const SizedBox(height: 4),
-            Row(
+            const SizedBox(height: 8), // Un poco más de espacio
+
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 12, // Espacio horizontal entre elementos
+              runSpacing: 4, // Espacio vertical si baja de línea
               children: [
-                Icon(
-                  Icons.people,
-                  size: 14,
-                  color: colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '${participants.length} participantes',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                if (date != null) ...[
-                  const SizedBox(width: 12),
-                  Icon(
-                    Icons.calendar_today,
-                    size: 14,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    DateFormat('dd/MM/yyyy HH:mm').format(date.toDate()),
-                    style: TextStyle(
-                      fontSize: 12,
+                // Elemento 1: Participantes
+                Row(
+                  mainAxisSize: MainAxisSize.min, // Importante para Wrap
+                  children: [
+                    Icon(
+                      Icons.people,
+                      size: 14,
                       color: colorScheme.onSurfaceVariant,
                     ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${participants.length} part.', // Abreviado para ahorrar espacio
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Elemento 2: Fecha (Si existe)
+                if (date != null)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.calendar_today,
+                        size: 14,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        DateFormat('dd/MM/yy HH:mm').format(date.toDate()),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
               ],
             ),
           ],
