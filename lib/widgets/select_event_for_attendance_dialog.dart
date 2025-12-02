@@ -7,6 +7,43 @@ import '../controllers/notification_controller.dart';
 class SelectEventForAttendanceDialog extends StatelessWidget {
   const SelectEventForAttendanceDialog({super.key});
 
+  /// Filtra eventos donde el usuario NO ha confirmado llegada
+  Future<List<Map<String, dynamic>>> _filterEventsWithoutAttendance(
+    List<QueryDocumentSnapshot> events,
+    String userId,
+  ) async {
+    final List<Map<String, dynamic>> filteredEvents = [];
+
+    for (final event in events) {
+      final eventId = event.id;
+      final eventData = event.data() as Map<String, dynamic>;
+
+      // Verificar si ya existe un registro de asistencia confirmada
+      final attendanceDoc = await FirebaseFirestore.instance
+          .collection('events')
+          .doc(eventId)
+          .collection('attendance')
+          .doc(userId)
+          .get();
+
+      final hasConfirmed =
+          attendanceDoc.exists &&
+          attendanceDoc.data()?['status'] == 'confirmed';
+
+      // Solo agregar eventos donde NO se ha confirmado llegada
+      if (!hasConfirmed) {
+        filteredEvents.add({
+          'id': eventId,
+          'title': eventData['title'] ?? 'Sin título',
+          'date': (eventData['date'] as Timestamp?)?.toDate(),
+          'address': eventData['location']?['address'] ?? 'Sin ubicación',
+        });
+      }
+    }
+
+    return filteredEvents;
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
@@ -24,7 +61,10 @@ class SelectEventForAttendanceDialog extends StatelessWidget {
           stream: FirebaseFirestore.instance
               .collection('events')
               .where('participants', arrayContains: currentUserId)
-              .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(todayStart))
+              .where(
+                'date',
+                isGreaterThanOrEqualTo: Timestamp.fromDate(todayStart),
+              )
               .where('date', isLessThan: Timestamp.fromDate(todayEnd))
               .snapshots(),
           builder: (context, snapshot) {
@@ -40,9 +80,7 @@ class SelectEventForAttendanceDialog extends StatelessWidget {
 
             // 2. Error
             if (snapshot.hasError) {
-              return Center(
-                child: Text('Error: ${snapshot.hasError}'),
-              );
+              return Center(child: Text('Error: ${snapshot.hasError}'));
             }
 
             // 3. Sin eventos
@@ -68,61 +106,125 @@ class SelectEventForAttendanceDialog extends StatelessWidget {
 
             final events = snapshot.data!.docs;
 
-            // 4. Lista de eventos
-            return ListView.builder(
-              shrinkWrap: true,
-              itemCount: events.length,
-              itemBuilder: (context, index) {
-                final eventData = events[index].data() as Map<String, dynamic>;
-                final eventId = events[index].id;
-                final title = eventData['title'] ?? 'Sin título';
-                final date = (eventData['date'] as Timestamp?)?.toDate();
-                final address = eventData['location']?['address'] ?? 'Sin ubicación';
+            // 4. Lista de eventos (filtrando los que ya tienen asistencia confirmada)
+            return FutureBuilder<List<Map<String, dynamic>>>(
+              future: _filterEventsWithoutAttendance(events, currentUserId),
+              builder: (context, filteredSnapshot) {
+                if (filteredSnapshot.connectionState ==
+                    ConnectionState.waiting) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(20),
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+                }
 
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                      child: Icon(
-                        Icons.event,
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                if (filteredSnapshot.hasError) {
+                  return Center(
+                    child: Text('Error: ${filteredSnapshot.error}'),
+                  );
+                }
+
+                final filteredEvents = filteredSnapshot.data ?? [];
+
+                if (filteredEvents.isEmpty) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            size: 64,
+                            color: Colors.green,
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'Ya confirmaste llegada a todos tus eventos de hoy',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 16),
+                          ),
+                        ],
                       ),
                     ),
-                    title: Text(title),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (date != null)
-                          Row(
-                            children: [
-                              const Icon(Icons.access_time, size: 14, color: Colors.grey),
-                              const SizedBox(width: 4),
-                              Text(
-                                DateFormat('HH:mm').format(date),
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                            ],
+                  );
+                }
+
+                return ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: filteredEvents.length,
+                  itemBuilder: (context, index) {
+                    final eventInfo = filteredEvents[index];
+                    final eventId = eventInfo['id'];
+                    final title = eventInfo['title'];
+                    final date = eventInfo['date'];
+                    final address = eventInfo['address'];
+
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primaryContainer,
+                          child: Icon(
+                            Icons.event,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onPrimaryContainer,
                           ),
-                        Row(
+                        ),
+                        title: Text(title),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.location_on, size: 14, color: Colors.grey),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                address,
-                                style: const TextStyle(fontSize: 12),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                            if (date != null)
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.access_time,
+                                    size: 14,
+                                    color: Colors.grey,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    DateFormat('HH:mm').format(date),
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                ],
                               ),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.location_on,
+                                  size: 14,
+                                  color: Colors.grey,
+                                ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    address,
+                                    style: const TextStyle(fontSize: 12),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => _confirmAttendance(context, eventId, title, currentUserId),
-                  ),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => _confirmAttendance(
+                          context,
+                          eventId,
+                          title,
+                          currentUserId,
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
             );
@@ -139,11 +241,11 @@ class SelectEventForAttendanceDialog extends StatelessWidget {
   }
 
   Future<void> _confirmAttendance(
-      BuildContext context,
-      String eventId,
-      String eventTitle,
-      String userId,
-      ) async {
+    BuildContext context,
+    String eventId,
+    String eventTitle,
+    String userId,
+  ) async {
     // Confirmar acción
     final confirm = await showDialog<bool>(
       context: context,
@@ -174,9 +276,9 @@ class SelectEventForAttendanceDialog extends StatelessWidget {
           .collection('attendance')
           .doc(userId)
           .set({
-        'status': 'confirmed',
-        'confirmedAt': FieldValue.serverTimestamp(),
-      });
+            'status': 'confirmed',
+            'confirmedAt': FieldValue.serverTimestamp(),
+          });
 
       //2. Notificación LOCAL al usuario (la que faltaba)
       final notificationController = NotificationController();
@@ -202,9 +304,7 @@ class SelectEventForAttendanceDialog extends StatelessWidget {
 
       //4. Notificación al ORGANIZADOR
       if (creatorId != null && creatorId != userId) {
-        await FirebaseFirestore.instance
-            .collection('notifications')
-            .add({
+        await FirebaseFirestore.instance.collection('notifications').add({
           'type': 'attendance_confirmed',
           'eventId': eventId,
           'eventTitle': eventTitle,
@@ -238,7 +338,5 @@ class SelectEventForAttendanceDialog extends StatelessWidget {
         );
       }
     }
-
   }
-
 }

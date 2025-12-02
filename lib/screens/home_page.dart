@@ -660,384 +660,8 @@ class _HomePageState extends State<HomePage> {
 
                                   const SizedBox(height: 16),
 
-                                  // Acciones Rápidas (Botones)
-                                  const SizedBox(height: 16),
-
-                                  // Próximo Evento (con lógica híbrida)
-                                  StreamBuilder<QuerySnapshot>(
-                                    stream: FirebaseFirestore.instance
-                                        .collection('events')
-                                        .where(
-                                          'participants',
-                                          arrayContains: u.uid,
-                                        )
-                                        .where(
-                                          'date',
-                                          isGreaterThan: Timestamp.fromDate(
-                                            DateTime.now().subtract(
-                                              const Duration(hours: 24),
-                                            ),
-                                          ),
-                                        )
-                                        .orderBy('date')
-                                        .limit(5)
-                                        .snapshots(),
-                                    builder: (context, nextSnapshot) {
-                                      if (!nextSnapshot.hasData ||
-                                          nextSnapshot.data!.docs.isEmpty) {
-                                        return const SizedBox.shrink();
-                                      }
-
-                                      // Buscar el primer evento que debe mostrarse
-                                      return FutureBuilder<DocumentSnapshot?>(
-                                        future: _findNextDisplayableEvent(
-                                          nextSnapshot.data!.docs,
-                                          u.uid,
-                                        ),
-                                        builder: (context, eventFuture) {
-                                          if (!eventFuture.hasData ||
-                                              eventFuture.data == null) {
-                                            return const SizedBox.shrink();
-                                          }
-
-                                          final nextEvent = eventFuture.data!;
-                                          final data =
-                                              nextEvent.data()
-                                                  as Map<String, dynamic>;
-                                          final title =
-                                              data['title'] ?? 'Evento';
-                                          final eventDate =
-                                              (data['date'] as Timestamp)
-                                                  .toDate();
-                                          final now = DateTime.now();
-                                          final difference = eventDate
-                                              .difference(now);
-
-                                          // Verificar si hay confirmación de asistencia
-                                          return FutureBuilder<
-                                            DocumentSnapshot
-                                          >(
-                                            future: FirebaseFirestore.instance
-                                                .collection('events')
-                                                .doc(nextEvent.id)
-                                                .collection('attendance')
-                                                .doc(u.uid)
-                                                .get(),
-                                            builder: (context, attendanceSnapshot) {
-                                              final hasConfirmed =
-                                                  attendanceSnapshot.hasData &&
-                                                  attendanceSnapshot
-                                                      .data!
-                                                      .exists &&
-                                                  (attendanceSnapshot.data!
-                                                              .data()
-                                                          as Map<
-                                                            String,
-                                                            dynamic
-                                                          >?)?['status'] ==
-                                                      'confirmed';
-
-                                              String timeLeft;
-                                              Color countdownColor;
-                                              IconData displayIcon;
-                                              bool showConfirmedBadge = false;
-
-                                              if (hasConfirmed &&
-                                                  difference.inHours < 0 &&
-                                                  difference.inHours > -3) {
-                                                // Evento confirmado en curso (hasta 3h después)
-                                                timeLeft = 'En curso';
-                                                countdownColor = Colors.blue;
-                                                displayIcon =
-                                                    Icons.check_circle;
-                                                showConfirmedBadge = true;
-                                              } else if (difference.inDays >
-                                                  0) {
-                                                timeLeft =
-                                                    '${difference.inDays}d';
-                                                countdownColor =
-                                                    colorScheme.primary;
-                                                displayIcon = Icons.alarm;
-                                              } else if (difference.inHours >
-                                                  0) {
-                                                timeLeft =
-                                                    '${difference.inHours}h';
-                                                countdownColor = Colors.orange;
-                                                displayIcon = Icons.alarm;
-                                              } else if (difference.inMinutes >
-                                                  0) {
-                                                timeLeft =
-                                                    '${difference.inMinutes}m';
-                                                countdownColor =
-                                                    colorScheme.error;
-                                                displayIcon = Icons.alarm;
-                                              } else if (difference.inMinutes >
-                                                      -60 &&
-                                                  !hasConfirmed) {
-                                                // Evento pasó hace menos de 1h y no confirmó
-                                                timeLeft = '¡Ahora!';
-                                                countdownColor =
-                                                    colorScheme.error;
-                                                displayIcon = Icons.alarm;
-                                              } else {
-                                                // No mostrar (ya pasó el tiempo límite)
-                                                return const SizedBox.shrink();
-                                              }
-
-                                              return Container(
-                                                padding: const EdgeInsets.all(
-                                                  16,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  gradient: LinearGradient(
-                                                    colors: [
-                                                      showConfirmedBadge
-                                                          ? Colors.blue.shade100
-                                                          : colorScheme
-                                                                .primaryContainer,
-                                                      showConfirmedBadge
-                                                          ? Colors.blue.shade200
-                                                          : colorScheme
-                                                                .secondaryContainer,
-                                                    ],
-                                                  ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                  border: Border.all(
-                                                    color: showConfirmedBadge
-                                                        ? Colors.blue
-                                                              .withOpacity(0.5)
-                                                        : colorScheme.primary
-                                                              .withOpacity(0.3),
-                                                    width: 1,
-                                                  ),
-                                                ),
-                                                child: InkWell(
-                                                  onTap: () {
-                                                    Navigator.of(context).push(
-                                                      MaterialPageRoute(
-                                                        builder: (_) =>
-                                                            EventDetailPage(
-                                                              eventId:
-                                                                  nextEvent.id,
-                                                            ),
-                                                      ),
-                                                    );
-                                                  },
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                  child: Column(
-                                                    children: [
-                                                      if (showConfirmedBadge)
-                                                        Container(
-                                                          margin:
-                                                              const EdgeInsets.only(
-                                                                bottom: 12,
-                                                              ),
-                                                          padding:
-                                                              const EdgeInsets.symmetric(
-                                                                horizontal: 12,
-                                                                vertical: 6,
-                                                              ),
-                                                          decoration: BoxDecoration(
-                                                            color: Colors.green,
-                                                            borderRadius:
-                                                                BorderRadius.circular(
-                                                                  20,
-                                                                ),
-                                                          ),
-                                                          child: Row(
-                                                            mainAxisSize:
-                                                                MainAxisSize
-                                                                    .min,
-                                                            children: const [
-                                                              Icon(
-                                                                Icons
-                                                                    .check_circle,
-                                                                color: Colors
-                                                                    .white,
-                                                                size: 16,
-                                                              ),
-                                                              SizedBox(
-                                                                width: 6,
-                                                              ),
-                                                              Text(
-                                                                '✓ Llegada confirmada',
-                                                                style: TextStyle(
-                                                                  color: Colors
-                                                                      .white,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .bold,
-                                                                  fontSize: 13,
-                                                                ),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ),
-                                                      Row(
-                                                        children: [
-                                                          Container(
-                                                            padding:
-                                                                const EdgeInsets.all(
-                                                                  8,
-                                                                ),
-                                                            decoration: BoxDecoration(
-                                                              color:
-                                                                  Theme.of(
-                                                                        context,
-                                                                      ).brightness ==
-                                                                      Brightness
-                                                                          .light
-                                                                  ? Colors.white
-                                                                        .withOpacity(
-                                                                          0.2,
-                                                                        )
-                                                                  : colorScheme
-                                                                        .primary
-                                                                        .withOpacity(
-                                                                          0.15,
-                                                                        ),
-                                                              borderRadius:
-                                                                  BorderRadius.circular(
-                                                                    12,
-                                                                  ),
-                                                            ),
-                                                            child: Icon(
-                                                              displayIcon,
-                                                              color:
-                                                                  Theme.of(
-                                                                        context,
-                                                                      ).brightness ==
-                                                                      Brightness
-                                                                          .light
-                                                                  ? Colors.white
-                                                                  : colorScheme
-                                                                        .primary,
-                                                              size: 24,
-                                                            ),
-                                                          ),
-                                                          const SizedBox(
-                                                            width: 12,
-                                                          ),
-                                                          Expanded(
-                                                            child: Column(
-                                                              crossAxisAlignment:
-                                                                  CrossAxisAlignment
-                                                                      .start,
-                                                              children: [
-                                                                Text(
-                                                                  'Próximo evento',
-                                                                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                                                    color:
-                                                                        Theme.of(
-                                                                              context,
-                                                                            ).brightness ==
-                                                                            Brightness.light
-                                                                        ? colorScheme.secondary.withOpacity(
-                                                                            0.7,
-                                                                          )
-                                                                        : colorScheme
-                                                                              .primary,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w600,
-                                                                  ),
-                                                                ),
-                                                                const SizedBox(
-                                                                  height: 4,
-                                                                ),
-                                                                Text(
-                                                                  title,
-                                                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                                                    color:
-                                                                        Theme.of(
-                                                                              context,
-                                                                            ).brightness ==
-                                                                            Brightness.light
-                                                                        ? Colors
-                                                                              .white
-                                                                        : Colors.white.withOpacity(
-                                                                            0.8,
-                                                                          ),
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w700,
-                                                                  ),
-                                                                  overflow:
-                                                                      TextOverflow
-                                                                          .ellipsis,
-                                                                  maxLines: 1,
-                                                                ),
-                                                                const SizedBox(
-                                                                  height: 2,
-                                                                ),
-                                                                Text(
-                                                                  '${eventDate.day}/${eventDate.month}/${eventDate.year} a las ${eventDate.hour.toString().padLeft(2, '0')}:${eventDate.minute.toString().padLeft(2, '0')}',
-                                                                  style: Theme.of(context)
-                                                                      .textTheme
-                                                                      .bodySmall
-                                                                      ?.copyWith(
-                                                                        color: colorScheme
-                                                                            .onSurfaceVariant,
-                                                                      ),
-                                                                ),
-                                                              ],
-                                                            ),
-                                                          ),
-                                                          Container(
-                                                            padding:
-                                                                const EdgeInsets.symmetric(
-                                                                  horizontal:
-                                                                      16,
-                                                                  vertical: 8,
-                                                                ),
-                                                            decoration: BoxDecoration(
-                                                              color:
-                                                                  countdownColor,
-                                                              borderRadius:
-                                                                  BorderRadius.circular(
-                                                                    20,
-                                                                  ),
-                                                              boxShadow: [
-                                                                BoxShadow(
-                                                                  color: countdownColor
-                                                                      .withOpacity(
-                                                                        0.3,
-                                                                      ),
-                                                                  blurRadius: 8,
-                                                                  offset:
-                                                                      const Offset(
-                                                                        0,
-                                                                        2,
-                                                                      ),
-                                                                ),
-                                                              ],
-                                                            ),
-                                                            child: Text(
-                                                              timeLeft,
-                                                              style: TextStyle(
-                                                                color: colorScheme
-                                                                    .onPrimary,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .bold,
-                                                                fontSize: 16,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              );
-                                            },
-                                          );
-                                        },
-                                      );
-                                    },
-                                  ),
+                                  // 📅 Eventos de Hoy
+                                  _buildTodayEvents(u.uid, colorScheme),
 
                                   const SizedBox(height: 12),
 
@@ -1776,6 +1400,352 @@ class _HomePageState extends State<HomePage> {
     } catch (e) {
       return 0;
     }
+  }
+
+  // Widget de eventos de hoy
+  Widget _buildTodayEvents(String userId, ColorScheme colorScheme) {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final todayEnd = todayStart.add(const Duration(days: 1));
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('events')
+          .where('participants', arrayContains: userId)
+          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(todayStart))
+          .where('date', isLessThan: Timestamp.fromDate(todayEnd))
+          .orderBy('date')
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final events = snapshot.data!.docs;
+
+        return Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                colorScheme.primaryContainer,
+                colorScheme.secondaryContainer,
+              ],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: colorScheme.primary.withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.today,
+                        color: colorScheme.onPrimary,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Eventos de Hoy',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: colorScheme.onSurface,
+                                ),
+                          ),
+                          Text(
+                            '${events.length} ${events.length == 1 ? 'evento' : 'eventos'}',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: colorScheme.onSurfaceVariant),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(8),
+                itemCount: events.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final event = events[index];
+                  final data = event.data() as Map<String, dynamic>;
+                  final title = data['title'] ?? 'Sin título';
+                  final eventDate = (data['date'] as Timestamp).toDate();
+                  final address =
+                      data['location']?['address'] ?? 'Sin ubicación';
+
+                  final difference = eventDate.difference(now);
+
+                  // Verificar estado de confirmación
+                  return FutureBuilder<DocumentSnapshot>(
+                    future: FirebaseFirestore.instance
+                        .collection('events')
+                        .doc(event.id)
+                        .collection('attendance')
+                        .doc(userId)
+                        .get(),
+                    builder: (context, attendanceSnapshot) {
+                      final hasConfirmed =
+                          attendanceSnapshot.hasData &&
+                          attendanceSnapshot.data!.exists &&
+                          (attendanceSnapshot.data!.data()
+                                  as Map<String, dynamic>?)?['status'] ==
+                              'confirmed';
+
+                      // Determinar estado y tiempo restante
+                      String timeLeft;
+                      Color countdownColor;
+                      IconData statusIcon;
+                      bool showConfirmedBadge = false;
+                      String? badgeText;
+
+                      if (hasConfirmed) {
+                        if (difference.inMinutes < 0) {
+                          // Evento confirmado y finalizado
+                          timeLeft = 'Completado';
+                          countdownColor = Colors.green;
+                          statusIcon = Icons.check_circle;
+                          showConfirmedBadge =
+                              false; // No mostrar badge adicional
+                        } else if (difference.inHours > 0) {
+                          timeLeft = '${difference.inHours}h';
+                          countdownColor = Colors.blue;
+                          statusIcon = Icons.check_circle;
+                          showConfirmedBadge = true;
+                          badgeText = '✓ Confirmado';
+                        } else {
+                          timeLeft = '${difference.inMinutes}m';
+                          countdownColor = Colors.blue;
+                          statusIcon = Icons.check_circle;
+                          showConfirmedBadge = true;
+                          badgeText = '✓ Confirmado';
+                        }
+                      } else if (difference.inMinutes < 0) {
+                        timeLeft = 'Pasado';
+                        countdownColor = Colors.grey;
+                        statusIcon = Icons.history;
+                      } else if (difference.inDays > 0) {
+                        timeLeft = '${difference.inDays}d';
+                        countdownColor = colorScheme.primary;
+                        statusIcon = Icons.alarm;
+                      } else if (difference.inHours > 0) {
+                        timeLeft = '${difference.inHours}h';
+                        countdownColor = Colors.orange;
+                        statusIcon = Icons.alarm;
+                      } else if (difference.inMinutes > 0) {
+                        timeLeft = '${difference.inMinutes}m';
+                        countdownColor = colorScheme.error;
+                        statusIcon = Icons.notifications_active;
+                      } else {
+                        timeLeft = '¡Ahora!';
+                        countdownColor = colorScheme.error;
+                        statusIcon = Icons.notifications_active;
+                      }
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              showConfirmedBadge
+                                  ? Colors.blue.shade50
+                                  : colorScheme.primaryContainer.withOpacity(
+                                      0.3,
+                                    ),
+                              showConfirmedBadge
+                                  ? Colors.blue.shade100
+                                  : colorScheme.secondaryContainer.withOpacity(
+                                      0.3,
+                                    ),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: showConfirmedBadge
+                                ? Colors.blue.withOpacity(0.5)
+                                : colorScheme.primary.withOpacity(0.3),
+                            width: 2,
+                          ),
+                        ),
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    EventDetailPage(eventId: event.id),
+                              ),
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(16),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Row(
+                              children: [
+                                // Icono del evento
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        Theme.of(context).brightness ==
+                                            Brightness.light
+                                        ? Colors.white.withOpacity(0.8)
+                                        : colorScheme.surface.withOpacity(0.5),
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: countdownColor.withOpacity(0.3),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Icon(
+                                    statusIcon,
+                                    color: countdownColor,
+                                    size: 28,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                // Información del evento
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      if (showConfirmedBadge &&
+                                          badgeText != null)
+                                        Container(
+                                          margin: const EdgeInsets.only(
+                                            bottom: 6,
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 3,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.green,
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            badgeText!,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      Text(
+                                        title,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                              color:
+                                                  Theme.of(
+                                                        context,
+                                                      ).brightness ==
+                                                      Brightness.light
+                                                  ? colorScheme.onSurface
+                                                  : Colors.white,
+                                            ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                // Tiempo restante con degradado
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: timeLeft == 'Completado'
+                                        ? 12
+                                        : 16,
+                                    vertical: timeLeft == 'Completado' ? 8 : 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        countdownColor,
+                                        countdownColor.withOpacity(0.7),
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: countdownColor.withOpacity(0.4),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (timeLeft == 'Completado')
+                                        const Padding(
+                                          padding: EdgeInsets.only(right: 4),
+                                          child: Icon(
+                                            Icons.check_circle,
+                                            color: Colors.white,
+                                            size: 16,
+                                          ),
+                                        ),
+                                      Text(
+                                        timeLeft == 'Completado'
+                                            ? '✓'
+                                            : timeLeft,
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: timeLeft == 'Completado'
+                                              ? 14
+                                              : 18,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   // Widget de últimos eventos asistidos
