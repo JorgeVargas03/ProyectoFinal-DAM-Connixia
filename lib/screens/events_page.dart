@@ -5,21 +5,62 @@ import 'package:intl/intl.dart';
 import '../controllers/event_controller.dart';
 import 'event_detail_page.dart';
 import 'location_picker_page.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class EventsPage extends StatefulWidget {
-  const EventsPage({super.key});
+  final LatLng? initialLocation;
+
+  const EventsPage({
+    super.key,
+    this.initialLocation,
+  });
 
   @override
   State<EventsPage> createState() => _EventsPageState();
 }
 
+
 class _EventsPageState extends State<EventsPage> {
   final _eventCtrl = EventController();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialLocation != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showCreateEventDialog(preselectedLocation: widget.initialLocation);
+      });
+    }
+  }
 
   // Helper para formatear fechas
   String _formatDate(Timestamp? timestamp) {
     if (timestamp == null) return '--';
     return DateFormat('dd MMM HH:mm', 'es').format(timestamp.toDate());
+  }
+
+  // --- NUEVO HELPER para obtener icono de privacidad ---
+  Icon _getPrivacyIcon(String? privacy, {double size = 16}) {
+    switch (privacy) {
+      case 'public':
+        return Icon(Icons.public, color: Colors.green, size: size);
+      case 'semi-private':
+        return Icon(Icons.people, color: Colors.orange, size: size);
+      case 'private':
+        return Icon(Icons.lock, color: Colors.red, size: size);
+      default:
+        return Icon(Icons.public, color: Colors.grey, size: size);
+    }
+  }
+
+  // --- NUEVO HELPER para obtener texto de privacidad ---
+  String _getPrivacyText(String? privacy) {
+    switch (privacy) {
+      case 'public': return 'Público';
+      case 'semi-private': return 'Semiprivado';
+      case 'private': return 'Privado';
+      default: return 'No definido';
+    }
   }
 
   @override
@@ -34,19 +75,13 @@ class _EventsPageState extends State<EventsPage> {
       body: StreamBuilder<QuerySnapshot>(
         stream: _eventCtrl.getMyEvents(),
         builder: (context, snapshot) {
-          // 1. Estado de Carga
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-
-          // 2. Estado de Error
           if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
           }
-
           final docs = snapshot.data?.docs ?? [];
-
-          // 3. Estado Vacío
           if (docs.isEmpty) {
             return Center(
               child: Column(
@@ -55,7 +90,7 @@ class _EventsPageState extends State<EventsPage> {
                   Icon(Icons.event_note, size: 80, color: Colors.grey[300]),
                   const SizedBox(height: 16),
                   Text(
-                    'No tienes eventos activos',
+                    'No participas en ningún evento',
                     style: TextStyle(color: Colors.grey[600], fontSize: 16),
                   ),
                 ],
@@ -63,7 +98,6 @@ class _EventsPageState extends State<EventsPage> {
             );
           }
 
-          // 4. Lista de Eventos
           return ListView.builder(
             padding: const EdgeInsets.all(12),
             itemCount: docs.length,
@@ -72,14 +106,11 @@ class _EventsPageState extends State<EventsPage> {
               final data = doc.data() as Map<String, dynamic>;
               final eventId = doc.id;
 
-              // Datos del evento
               final title = data['title'] ?? 'Sin título';
               final creatorId = data['creatorId'] ?? '';
-              final creatorName = data['creatorName'] ?? 'Alguien';
               final date = data['date'] as Timestamp?;
               final address = data['location']?['address'] ?? 'Ubicación desconocida';
-
-              // --- LÓGICA DE PERMISOS ---
+              final privacy = data['privacy'] ?? 'public'; // <-- OBTENEMOS LA PRIVACIDAD
               final isCreator = (myUid == creatorId);
 
               return Card(
@@ -87,47 +118,66 @@ class _EventsPageState extends State<EventsPage> {
                 margin: const EdgeInsets.only(bottom: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 child: ListTile(
-                  contentPadding: const EdgeInsets.all(16),
+                  contentPadding: const EdgeInsets.fromLTRB(16, 16, 8, 16),
                   leading: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.primaryContainer,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(
-                        Icons.location_on,
-                        color: Theme.of(context).colorScheme.primary
-                    ),
+                    child: _getPrivacyIcon(privacy, size: 24), // <-- USAMOS EL ICONO
                   ),
                   title: Text(
-                      title,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
-                          const SizedBox(width: 4),
-                          Text(_formatDate(date), style: TextStyle(color: Colors.grey[800])),
-                        ],
-                      ),
+                    Row(
+                      children: [
+                        Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
+                        const SizedBox(width:4),
+                        Expanded(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  _formatDate(date),
+                                  style: TextStyle(color: Colors.grey[800]),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                              ),
+                              Text(
+                                _getPrivacyText(privacy),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                  color: _getPrivacyIcon(privacy).color,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                    ),
                       const SizedBox(height: 4),
                       Text(
-                        isCreator ? 'Organizado por ti' : 'Organiza: $creatorName',
+                        isCreator ? 'Organizado por ti' : 'Organiza: ${data['creatorName'] ?? 'Alguien'}',
                         style: TextStyle(
-                            color: isCreator ? Colors.green : Colors.grey[600],
-                            fontWeight: FontWeight.w500,
-                            fontSize: 12
+                          color: isCreator ? Colors.green : Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                          fontSize: 12,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(address, maxLines: 1, overflow: TextOverflow.ellipsis),
                     ],
                   ),
-                  // --- BOTÓN DE ACCIÓN SEGÚN ROL ---
                   trailing: isCreator
                       ? IconButton(
                     icon: const Icon(Icons.delete_outline, color: Colors.red),
@@ -140,7 +190,6 @@ class _EventsPageState extends State<EventsPage> {
                     onPressed: () => _confirmLeave(eventId),
                   ),
                   onTap: () {
-                    // Navegamos al detalle pasando el ID del evento
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => EventDetailPage(eventId: eventId),
@@ -161,9 +210,8 @@ class _EventsPageState extends State<EventsPage> {
     );
   }
 
-  // --- DIÁLOGOS DE CONFIRMACIÓN ---
-
   Future<void> _confirmDelete(String eventId, String creatorId) async {
+    // ... sin cambios ...
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -190,6 +238,7 @@ class _EventsPageState extends State<EventsPage> {
   }
 
   Future<void> _confirmLeave(String eventId) async {
+    // ... sin cambios ...
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -215,23 +264,22 @@ class _EventsPageState extends State<EventsPage> {
     }
   }
 
-  // --- CREACIÓN CON FECHA Y HORA ---
-  void _showCreateEventDialog() {
+  void _showCreateEventDialog({LatLng? preselectedLocation}) {
     final titleCtrl = TextEditingController();
     final descCtrl = TextEditingController();
-
-    // Inicializamos la fecha propuesta (ej. dentro de 2 horas)
     DateTime selectedDate = DateTime.now().add(const Duration(hours: 2));
-    
-    // Variables para almacenar la ubicación seleccionada
-    double? selectedLat;
-    double? selectedLng;
-    String selectedAddress = 'Sin ubicación';
+
+    double? selectedLat = preselectedLocation?.latitude;
+    double? selectedLng = preselectedLocation?.longitude;
+    String selectedAddress = preselectedLocation != null
+        ? 'Ubicación seleccionada en el mapa'
+        : 'Sin ubicación';
+
+    String selectedPrivacy = 'public';
 
     showDialog(
       context: context,
       builder: (ctx) {
-        // StatefulBuilder permite refrescar el diálogo al cambiar la fecha
         return StatefulBuilder(
             builder: (context, setStateDialog) {
               return AlertDialog(
@@ -243,22 +291,41 @@ class _EventsPageState extends State<EventsPage> {
                     children: [
                       TextField(
                         controller: titleCtrl,
-                        decoration: const InputDecoration(
-                            labelText: 'Título',
-                            hintText: 'Ej. Cena de graduación',
-                            prefixIcon: Icon(Icons.title)
-                        ),
+                        decoration: const InputDecoration(labelText: 'Título', hintText: 'Ej. Cena de graduación', prefixIcon: Icon(Icons.title)),
                         textCapitalization: TextCapitalization.sentences,
                       ),
                       const SizedBox(height: 12),
                       TextField(
                         controller: descCtrl,
-                        decoration: const InputDecoration(
-                            labelText: 'Descripción',
-                            prefixIcon: Icon(Icons.description_outlined)
-                        ),
+                        decoration: const InputDecoration(labelText: 'Descripción', prefixIcon: Icon(Icons.description_outlined)),
                         maxLines: 2,
                       ),
+                      const SizedBox(height: 20),
+
+                      // --- SELECTOR DE PRIVACIDAD ---
+                      const Text('Visibilidad', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        value: selectedPrivacy,
+                        decoration: InputDecoration(
+                          prefixIcon: _getPrivacyIcon(selectedPrivacy, size: 20),
+                          border: const OutlineInputBorder(),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 'public', child: Text('Público')),
+                          DropdownMenuItem(value: 'semi-private', child: Text('Semiprivado (Contactos)')),
+                          DropdownMenuItem(value: 'private', child: Text('Privado (por invitación)')),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setStateDialog(() {
+                              selectedPrivacy = value;
+                            });
+                          }
+                        },
+                      ),
+
                       const SizedBox(height: 20),
 
                       // --- SELECTOR DE FECHA ---
@@ -266,16 +333,14 @@ class _EventsPageState extends State<EventsPage> {
                       const SizedBox(height: 8),
                       InkWell(
                         onTap: () async {
-                          // 1. Elegir Fecha
                           final date = await showDatePicker(
                             context: context,
                             initialDate: selectedDate,
-                            firstDate: DateTime.now(), // No permitir fechas pasadas
+                            firstDate: DateTime.now(),
                             lastDate: DateTime(2100),
                           );
                           if (date == null) return;
 
-                          // 2. Elegir Hora
                           if (!context.mounted) return;
                           final time = await showTimePicker(
                             context: context,
@@ -283,16 +348,8 @@ class _EventsPageState extends State<EventsPage> {
                           );
                           if (time == null) return;
 
-                          // 3. Combinar y Actualizar
-                          final newDateTime = DateTime(
-                              date.year, date.month, date.day,
-                              time.hour, time.minute
-                          );
-
-                          // Actualizamos la variable visualmente
-                          setStateDialog(() {
-                            selectedDate = newDateTime;
-                          });
+                          final newDateTime = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+                          setStateDialog(() => selectedDate = newDateTime);
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
@@ -305,25 +362,16 @@ class _EventsPageState extends State<EventsPage> {
                               const Icon(Icons.calendar_today, color: Colors.indigo),
                               const SizedBox(width: 12),
                               Text(
-                                DateFormat('dd/MM/yyyy HH:mm').format(selectedDate),
+                                DateFormat('dd/MM/yyyy HH:mm', 'es').format(selectedDate),
                                 style: const TextStyle(fontSize: 16),
                               ),
                             ],
                           ),
                         ),
                       ),
-                      // Mensaje de error si la fecha es pasada (validación visual)
-                      if (selectedDate.isBefore(DateTime.now()))
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: Text(
-                            '¡Cuidado! La fecha ya pasó.',
-                            style: TextStyle(color: Colors.red[700], fontSize: 12),
-                          ),
-                        ),
-                      
+
                       const SizedBox(height: 20),
-                      
+
                       // --- SELECTOR DE UBICACIÓN ---
                       const Text('¿Dónde?', style: TextStyle(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 8),
@@ -332,7 +380,6 @@ class _EventsPageState extends State<EventsPage> {
                           final result = await Navigator.of(context).push<Map<String, dynamic>>(
                             MaterialPageRoute(builder: (_) => const LocationPickerPage()),
                           );
-                          
                           if (result != null) {
                             setStateDialog(() {
                               selectedLat = result['lat'];
@@ -342,98 +389,102 @@ class _EventsPageState extends State<EventsPage> {
                           }
                         },
                         child: Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey[300]!),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.location_on,
-                                color: selectedLat != null 
-                                  ? Theme.of(context).colorScheme.primary 
-                                  : Colors.grey,
+                      padding: const EdgeInsets.all(14),  decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey[300]!),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.location_on,
+                        color: selectedLat != null
+                            ? Theme.of(context).colorScheme.primary
+                            : Colors.grey,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              selectedLat != null
+                                  ? 'Ubicación seleccionada'
+                                  : 'Seleccionar ubicación',
+                              style: TextStyle(
+                                fontWeight: selectedLat != null
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      selectedLat != null 
-                                        ? 'Ubicación seleccionada' 
-                                        : 'Seleccionar ubicación',
-                                      style: TextStyle(
-                                        fontWeight: selectedLat != null 
-                                          ? FontWeight.bold 
-                                          : FontWeight.normal,
-                                      ),
-                                    ),
-                                    if (selectedLat != null) ...[
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        selectedAddress,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey[600],
-                                        ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ],
+                            ),
+                            if (selectedLat != null) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                selectedAddress,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
                                 ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              const Icon(Icons.chevron_right, color: Colors.grey),
                             ],
-                          ),
+                          ],
                         ),
                       ),
+                      const Icon(Icons.chevron_right, color: Colors.grey),
+                    ],
+                  ),
+                ),
+              ),
                     ],
                   ),
                 ),
                 actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: const Text('Cancelar'),
-                  ),
+                  TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
                   ElevatedButton(
                     onPressed: () async {
                       final title = titleCtrl.text.trim();
+
                       if (title.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Falta el título')));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('El título no puede estar vacío'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
                         return;
                       }
 
-                      // --- VALIDACIÓN DE FECHA ---
                       if (selectedDate.isBefore(DateTime.now())) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('La fecha debe ser en el futuro'),
-                              backgroundColor: Colors.red,
-                            )
+                          const SnackBar(
+                            content: Text('La fecha del evento debe ser en el futuro'),
+                            backgroundColor: Colors.red,
+                          ),
                         );
                         return;
                       }
 
-                      // --- VALIDACIÓN DE UBICACIÓN ---
                       if (selectedLat == null || selectedLng == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Debes seleccionar una ubicación')),
+                          const SnackBar(
+                            content: Text('Debes seleccionar una ubicación para el evento'),
+                            backgroundColor: Colors.red,
+                          ),
                         );
                         return;
                       }
 
-                      Navigator.pop(ctx); // Cerrar
+                      Navigator.pop(ctx);
 
                       final error = await _eventCtrl.createEvent(
-                        title: title,
+                        title: title, // Usamos la variable ya trimeada
                         description: descCtrl.text.trim(),
                         date: selectedDate,
                         lat: selectedLat!,
                         lng: selectedLng!,
                         address: selectedAddress,
+                        privacy: selectedPrivacy,
                       );
 
                       if (mounted && error != null) {
@@ -446,8 +497,7 @@ class _EventsPageState extends State<EventsPage> {
                   ),
                 ],
               );
-            }
-        );
+            });
       },
     );
   }

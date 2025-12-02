@@ -68,9 +68,9 @@ class _ExploreEventsPageState extends State<ExploreEventsPage> {
       body: _loadingLocation
           ? const Center(child: CircularProgressIndicator())
           : StreamBuilder<QuerySnapshot>(
-              stream: _eventCtrl.getAllPublicEvents(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
+        stream: _eventCtrl.getAllVisibleEvents(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
 

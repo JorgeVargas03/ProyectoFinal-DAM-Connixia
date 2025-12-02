@@ -1,5 +1,5 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:math' show cos, pi, sin, atan2, sqrt;
 import '../services/notification_service.dart';
@@ -9,9 +9,49 @@ class EventController {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final NotificationService _notificationService = NotificationService();
 
+  // --- FUNCIÓN DE MANTENIMIENTO (Sin cambios, es correcta) ---
+  Future<String> updateOldEventsToPublic() async {
+    try {
+      final snapshot = await _db
+          .collection('events')
+          .where('privacy', isEqualTo: null)
+          .get();
+
+      if (snapshot.docs.isEmpty) {
+        return "¡Genial! No hay eventos antiguos que necesiten ser actualizados.";
+      }
+
+      final batch = _db.batch();
+      for (final doc in snapshot.docs) {
+        batch.update(doc.reference, {'privacy': 'public'});
+      }
+      await batch.commit();
+      return "Éxito: Se han actualizado ${snapshot.docs.length} eventos antiguos a 'público'.";
+    } catch (e) {
+      debugPrint("Error actualizando eventos antiguos: $e");
+      return "Ocurrió un error durante la actualización: $e";
+    }
+  }
+
   String? get currentUid => _auth.currentUser?.uid;
 
-  // --- LEER (READ): Obtener eventos donde participo ---
+  // --- OBTENER IDS DE CONTACTOS (CORREGIDO) ---
+  // Lee los contactos desde el array 'contacts' en el documento del usuario.
+  Future<List<String>> _getContactIds() async {
+    if (currentUid == null) return [];
+    try {
+      final userDoc = await _db.collection('users').doc(currentUid).get();
+      if (!userDoc.exists) return [];
+      // Lee el array 'contacts', si no existe, devuelve una lista vacía.
+      final contacts = List<String>.from(userDoc.data()?['contacts'] ?? []);
+      return contacts;
+    } catch (e) {
+      debugPrint("Error obteniendo contactos: $e");
+      return [];
+    }
+  }
+
+  // --- LEER EVENTOS DONDE PARTICIPO (Sin cambios) ---
   Stream<QuerySnapshot> getMyEvents() {
     if (currentUid == null) return const Stream.empty();
     return _db
@@ -21,37 +61,71 @@ class EventController {
         .snapshots();
   }
 
-  // --- LEER (READ): Obtener TODOS los eventos públicos activos ---
-  Stream<QuerySnapshot> getAllPublicEvents() {
-    return _db
+  // --- LEER TODOS LOS EVENTOS VISIBLES (CORREGIDO) ---
+  // Aplica el filtrado de semiprivados en el cliente sin cambiar el tipo de retorno.
+  Stream<QuerySnapshot> getAllVisibleEvents() {
+    if (currentUid == null) return const Stream.empty();
+    final controller = StreamController<QuerySnapshot>();
+
+    // Escuchamos el stream original de Firestore
+    _db
         .collection('events')
         .where('status', isEqualTo: 'active')
+        .where('privacy', whereIn: ['public', 'semi-private'])
         .orderBy('date', descending: false)
-        .snapshots();
+        .snapshots()
+        .listen((snapshot) async {
+      final myContacts = await _getContactIds();
+      final filteredDocs = _filterVisibleEvents(snapshot.docs, myContacts);
+
+      // Creamos un nuevo QuerySnapshot "falso" con los documentos filtrados
+      final newSnapshot = _createFakeQuerySnapshot(filteredDocs, snapshot.metadata);
+      controller.add(newSnapshot);
+    }, onError: (error) {
+      controller.addError(error);
+    });
+
+    return controller.stream;
   }
 
-  // --- LEER (READ): Obtener eventos públicos cercanos (filtro por coordenadas aproximadas) ---
+  // --- LEER EVENTOS VISIBLES CERCANOS (CORREGIDO) ---
+  // Aplica el filtrado de semiprivados en el cliente sin cambiar el tipo de retorno.
   Stream<QuerySnapshot> getNearbyEvents({
     required double userLat,
     required double userLng,
-    double radiusInKm = 50, // Radio de búsqueda por defecto 50km
+    double radiusInKm = 50,
   }) {
-    // Aproximación simple: filtrar por rango de coordenadas
-    // Para mayor precisión, usar GeoFlutterFire o similar
-    final latDelta = radiusInKm / 111.0; // 1 grado lat ≈ 111 km
+    if (currentUid == null) return const Stream.empty();
+    final controller = StreamController<QuerySnapshot>();
+
+    final latDelta = radiusInKm / 111.0;
     final lngDelta = radiusInKm / (111.0 * cos(userLat * pi / 180));
 
-    return _db
+    // Escuchamos el stream original de Firestore
+    _db
         .collection('events')
         .where('status', isEqualTo: 'active')
+        .where('privacy', whereIn: ['public', 'semi-private'])
         .where('location.lat', isGreaterThan: userLat - latDelta)
         .where('location.lat', isLessThan: userLat + latDelta)
         .orderBy('location.lat')
         .orderBy('date', descending: false)
-        .snapshots();
+        .snapshots()
+        .listen((snapshot) async {
+      final myContacts = await _getContactIds();
+      final filteredDocs = _filterVisibleEvents(snapshot.docs, myContacts);
+
+      // Creamos un nuevo QuerySnapshot "falso" con los documentos filtrados
+      final newSnapshot = _createFakeQuerySnapshot(filteredDocs, snapshot.metadata);
+      controller.add(newSnapshot);
+    }, onError: (error) {
+      controller.addError(error);
+    });
+
+    return controller.stream;
   }
 
-  // --- CREAR (CREATE) ---
+  // --- CREAR (CREATE) (Sin cambios) ---
   Future<String?> createEvent({
     required String title,
     required String description,
@@ -59,6 +133,7 @@ class EventController {
     required double lat,
     required double lng,
     required String address,
+    required String privacy,
   }) async {
     final user = _auth.currentUser;
     if (user == null) return 'No estás autenticado';
@@ -68,16 +143,12 @@ class EventController {
         'title': title,
         'description': description,
         'date': Timestamp.fromDate(date),
-        'creatorId': user.uid, // <--- ESTO ES LA CLAVE DEL PERMISO
+        'creatorId': user.uid,
         'creatorName': user.displayName ?? 'Usuario',
-        'location': {
-          'lat': lat,
-          'lng': lng,
-          'address': address,
-        },
-        // El creador entra automáticamente como participante
+        'location': {'lat': lat, 'lng': lng, 'address': address},
         'participants': [user.uid],
         'status': 'active',
+        'privacy': privacy,
         'createdAt': FieldValue.serverTimestamp(),
       });
       return null;
@@ -87,130 +158,125 @@ class EventController {
     }
   }
 
-  // --- BORRAR (DELETE): Solo si eres el creador ---
+  // --- BORRAR (DELETE) (Sin cambios) ---
   Future<String?> deleteEvent(String eventId, String creatorId) async {
-    if (currentUid != creatorId) {
-      return 'No tienes permiso para borrar este evento';
-    }
-
+    if (currentUid != creatorId) return 'No tienes permiso para borrar este evento';
     try {
       await _db.collection('events').doc(eventId).delete();
       return null;
-    } catch (e) {
-      return 'Error al borrar evento';
-    }
+    } catch (e) { return 'Error al borrar evento'; }
   }
 
-  // --- EDITAR (UPDATE): Solo si eres el creador ---
+  // --- EDITAR (UPDATE) (Sin cambios) ---
   Future<String?> updateEvent(String eventId, String creatorId, Map<String, dynamic> data) async {
-    if (currentUid != creatorId) {
-      return 'No tienes permiso para editar este evento';
-    }
-
+    if (currentUid != creatorId) return 'No tienes permiso para editar este evento';
     try {
       await _db.collection('events').doc(eventId).update(data);
       return null;
-    } catch (e) {
-      return 'Error al actualizar evento';
-    }
+    } catch (e) { return 'Error al actualizar evento'; }
   }
 
-  // --- SALIRSE (LEAVE): Para invitados ---
-  // Nota: Si el creador se sale, el evento podría quedar huérfano o podrías
-  // decidir borrar el evento si el creador se va. Aquí solo lo sacamos de la lista.
+  // --- SALIRSE (LEAVE) (Sin cambios) ---
   Future<String?> leaveEvent(String eventId) async {
     if (currentUid == null) return 'Error de sesión';
-
     try {
       await _db.collection('events').doc(eventId).update({
         'participants': FieldValue.arrayRemove([currentUid])
       });
       return null;
-    } catch (e) {
-      return 'Error al salir del evento';
-    }
+    } catch (e) { return 'Error al salir del evento'; }
   }
 
-  // --- UNIRSE (JOIN): Para unirse a eventos de otros usuarios ---
+  // --- UNIRSE (JOIN) (Sin cambios, ya era correcto) ---
   Future<String?> joinEvent(String eventId) async {
     if (currentUid == null) return 'Error de sesión';
-    
     try {
-      final eventDoc = await _db.collection('events').doc(eventId).get();
-      
+      final eventDocRef = _db.collection('events').doc(eventId);
+      final eventDoc = await eventDocRef.get();
       if (!eventDoc.exists) return 'El evento no existe';
-      
+
       final data = eventDoc.data() as Map<String, dynamic>;
       final creatorId = data['creatorId'];
       final participants = List.from(data['participants'] ?? []);
-      
-      // Validar que no sea el creador
-      if (currentUid == creatorId) {
-        return 'No puedes unirte a tu propio evento';
+      final privacy = data['privacy'] ?? 'public';
+
+      if (currentUid == creatorId) return 'No puedes unirte a tu propio evento';
+      if (participants.contains(currentUid)) return 'Ya estás participando en este evento';
+
+      switch (privacy) {
+        case 'public': break;
+        case 'semi-private':
+          final creatorDoc = await _db.collection('users').doc(creatorId).get();
+          if (!creatorDoc.exists) return 'Error: No se pudo verificar la privacidad del evento.';
+          final creatorContacts = List<String>.from(creatorDoc.data()?['contacts'] ?? []);
+          if (!creatorContacts.contains(currentUid)) return 'Este es un evento semiprivado, solo para contactos del creador.';
+          break;
+        case 'private': return 'Este es un evento privado y solo se puede acceder por invitación.';
+        default: break;
       }
-      
-      // Validar que no esté ya unido
-      if (participants.contains(currentUid)) {
-        return 'Ya estás participando en este evento';
-      }
-      
-      // Unirse al evento
-      await _db.collection('events').doc(eventId).update({
-        'participants': FieldValue.arrayUnion([currentUid])
-      });
-      
-      // Enviar notificación al creador
+
+      await eventDocRef.update({'participants': FieldValue.arrayUnion([currentUid])});
+
       final currentUser = _auth.currentUser;
       final joinerName = currentUser?.displayName ?? 'Un usuario';
       final eventTitle = data['title'] ?? 'un evento';
-      
       await _notificationService.notifyEventJoin(
         eventId: eventId,
         eventTitle: eventTitle,
         creatorId: creatorId,
         joinerName: joinerName,
       );
-      
       return null;
     } catch (e) {
       debugPrint('Error al unirse: $e');
-      return 'Error al unirse';
+      return 'Ocurrió un error al intentar unirse';
     }
   }
 
-  // --- CALCULAR DISTANCIA entre dos puntos (Haversine formula) ---
-  double calculateDistance(double lat1, double lng1, double lat2, double lng2) {
-    const earthRadius = 6371; // Radio de la Tierra en km
-    
-    final dLat = _toRadians(lat2 - lat1);
-    final dLng = _toRadians(lng2 - lng1);
-    
-    final a = sin(dLat / 2) * sin(dLat / 2) +
-        cos(_toRadians(lat1)) * cos(_toRadians(lat2)) *
-        sin(dLng / 2) * sin(dLng / 2);
-    
-    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
-    
-    return earthRadius * c; // Distancia en kilómetros
+  // --- MÉTODOS DE AYUDA (NUEVOS y sin cambios) ---
+
+  // Lógica de filtrado reutilizable
+  List<QueryDocumentSnapshot> _filterVisibleEvents(
+      List<QueryDocumentSnapshot> docs, List<String> myContacts) {
+    return docs.where((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      final privacy = data['privacy'] ?? 'public';
+      final creatorId = data['creatorId'];
+
+      if (privacy == 'public') return true;
+      if (privacy == 'semi-private') {
+        // Es visible si yo soy el creador O si el creador está en mis contactos
+        return creatorId == currentUid || myContacts.contains(creatorId);
+      }
+      return false;
+    }).toList();
   }
 
-  double _toRadians(double degrees) => degrees * pi / 180;
+  // Utilidad para crear un QuerySnapshot "falso" y mantener compatibilidad
+  QuerySnapshot _createFakeQuerySnapshot(
+      List<QueryDocumentSnapshot> docs, SnapshotMetadata metadata) {
+    return _FakeQuerySnapshot(docs, metadata);
+  }
 
-  // --- OBTENER INFORMACIÓN DE PARTICIPANTES ---
+  // --- CÁLCULO DE DISTANCIA (Sin cambios) ---
+  double calculateDistance(double lat1, double lng1, double lat2, double lng2) {
+    const r = 6371;
+    final dLat = _toRadians(lat2 - lat1);
+    final dLng = _toRadians(lng2 - lng1);
+    final a = sin(dLat / 2) * sin(dLat / 2) + cos(_toRadians(lat1)) * cos(_toRadians(lat2)) * sin(dLng / 2) * sin(dLng / 2);
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return r * c;
+  }
+  double _toRadians(double d) => d * pi / 180;
+
+  // --- OBTENER INFO DE PARTICIPANTES (Sin cambios) ---
   Future<List<Map<String, dynamic>>> getParticipantsInfo(List<String> participantIds) async {
     if (participantIds.isEmpty) return [];
-    
     try {
       final users = <Map<String, dynamic>>[];
-      
-      // Firestore limita 'in' queries a 10 elementos, así que procesamos en lotes
       for (var i = 0; i < participantIds.length; i += 10) {
         final batch = participantIds.skip(i).take(10).toList();
-        final snapshot = await _db
-            .collection('users')
-            .where(FieldPath.documentId, whereIn: batch)
-            .get();
-        
+        final snapshot = await _db.collection('users').where(FieldPath.documentId, whereIn: batch).get();
         for (var doc in snapshot.docs) {
           users.add({
             'uid': doc.id,
@@ -220,11 +286,27 @@ class EventController {
           });
         }
       }
-      
       return users;
     } catch (e) {
       debugPrint('Error obteniendo participantes: $e');
       return [];
     }
   }
+}
+
+// Clase de ayuda para crear un QuerySnapshot falso
+class _FakeQuerySnapshot implements QuerySnapshot {
+  @override
+  final List<QueryDocumentSnapshot> docs;
+
+  @override
+  final SnapshotMetadata metadata;
+
+  @override
+  List<DocumentChange> get docChanges => throw UnimplementedError();
+
+  @override
+  int get size => docs.length;
+
+  _FakeQuerySnapshot(this.docs, this.metadata);
 }
