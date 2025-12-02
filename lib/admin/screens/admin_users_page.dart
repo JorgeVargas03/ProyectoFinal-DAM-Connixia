@@ -266,7 +266,7 @@ class _UserCard extends StatelessWidget {
                           foregroundColor: Colors.white,
                         ),
                       )
-                    else if (role == 'admin')
+                    else if (role == 'admin' && uid != adminCtrl.currentUid)
                       ElevatedButton.icon(
                         onPressed: () => _changeRole(context, uid, 'user'),
                         icon: const Icon(Icons.person, size: 16),
