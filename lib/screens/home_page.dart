@@ -519,34 +519,34 @@ class _HomePageState extends State<HomePage> {
                                     ],
                                   ),
 
-                                  const SizedBox(height: 20),
+                                  const SizedBox(height: 24),
 
                                   // Estadísticas con Tap Individual
                                   Container(
-                                    padding: const EdgeInsets.all(16),
+                                    padding: const EdgeInsets.all(24),
                                     decoration: BoxDecoration(
                                       color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceAround,
                                       children: [
-                                        // Tap en "Participando" → Ver eventos donde participo
-                                        InkWell(
-                                          onTap: () {
-                                            Navigator.of(context).push(
-                                              MaterialPageRoute(
-                                                builder: (_) => const EventsPage(),
-                                              ),
-                                            );
-                                          },
-                                          borderRadius: BorderRadius.circular(8),
-                                          child: _buildStat(
-                                            context,
-                                            Icons.event,
-                                            '${myEvents.length}',
-                                            'Participando',
-                                            colorScheme.primary,
+                                        Expanded(
+                                          child: InkWell(
+                                            onTap: () {
+                                              Navigator.of(context).push(
+                                                MaterialPageRoute(
+                                                  builder: (_) => const EventsPage(),
+                                                ),
+                                              );
+                                            },
+                                            borderRadius: BorderRadius.circular(8),
+                                            child: _buildStat(
+                                              context,
+                                              Icons.event,
+                                              '${myEvents.length}',
+                                              'Participando',
+                                              colorScheme.primary,
+                                            ),
                                           ),
                                         ),
                                         Container(
@@ -554,22 +554,23 @@ class _HomePageState extends State<HomePage> {
                                           height: 50,
                                           color: colorScheme.outlineVariant,
                                         ),
-                                        // Tap en "Creados" → Ver solo eventos creados por mí
-                                        InkWell(
-                                          onTap: () {
-                                            Navigator.of(context).push(
-                                              MaterialPageRoute(
-                                                builder: (_) => const EventsPage(),
-                                              ),
-                                            );
-                                          },
-                                          borderRadius: BorderRadius.circular(8),
-                                          child: _buildStat(
-                                            context,
-                                            Icons.create,
-                                            '$createdEvents',
-                                            'Creados',
-                                            colorScheme.tertiary,
+                                        Expanded(
+                                          child: InkWell(
+                                            onTap: () {
+                                              Navigator.of(context).push(
+                                                MaterialPageRoute(
+                                                  builder: (_) => const EventsPage(),
+                                                ),
+                                              );
+                                            },
+                                            borderRadius: BorderRadius.circular(8),
+                                            child: _buildStat(
+                                              context,
+                                              Icons.create,
+                                              '$createdEvents',
+                                              'Creados',
+                                              colorScheme.secondary.withOpacity(0.6),
+                                            ),
                                           ),
                                         ),
                                       ],
@@ -581,7 +582,7 @@ class _HomePageState extends State<HomePage> {
                                   // Acciones Rápidas (Botones)
                                   const SizedBox(height: 16),
 
-// ⏰ Próximo Evento con Countdown
+                                  // Próximo Evento
                                   StreamBuilder<QuerySnapshot>(
                                     stream: FirebaseFirestore.instance
                                         .collection('events')
