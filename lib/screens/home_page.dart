@@ -645,18 +645,22 @@ class _HomePageState extends State<HomePage> {
                                           child: Row(
                                             children: [
                                               Container(
-                                                padding: const EdgeInsets.all(12),
+                                                padding: const EdgeInsets.all(8),
                                                 decoration: BoxDecoration(
-                                                  color: colorScheme.primary.withOpacity(0.15),
+                                                  color: Theme.of(context).brightness == Brightness.light
+                                                      ? Colors.white.withOpacity(0.2)
+                                                      : colorScheme.primary.withOpacity(0.15),
                                                   borderRadius: BorderRadius.circular(12),
                                                 ),
                                                 child: Icon(
                                                   Icons.alarm,
-                                                  color: colorScheme.primary,
-                                                  size: 32,
+                                                  color: Theme.of(context).brightness == Brightness.light
+                                                      ? Colors.white
+                                                      : colorScheme.primary,
+                                                  size: 24,
                                                 ),
                                               ),
-                                              const SizedBox(width: 16),
+                                              const SizedBox(width: 12),
                                               Expanded(
                                                 child: Column(
                                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -664,7 +668,9 @@ class _HomePageState extends State<HomePage> {
                                                     Text(
                                                       'Próximo evento',
                                                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                                        color: colorScheme.primary,
+                                                        color: Theme.of(context).brightness == Brightness.light
+                                                            ? colorScheme.secondary.withOpacity(0.7)
+                                                            : colorScheme.primary,
                                                         fontWeight: FontWeight.w600,
                                                       ),
                                                     ),
@@ -672,7 +678,10 @@ class _HomePageState extends State<HomePage> {
                                                     Text(
                                                       title,
                                                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                                        fontWeight: FontWeight.bold,
+                                                        color: Theme.of(context).brightness == Brightness.light
+                                                            ? Colors.white
+                                                            : Colors.white.withOpacity(0.8),
+                                                        fontWeight: FontWeight.w700,
                                                       ),
                                                       overflow: TextOverflow.ellipsis,
                                                       maxLines: 1,
