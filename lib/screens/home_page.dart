@@ -1,4 +1,5 @@
 // (Solo los imports necesarios)
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:shake/shake.dart';
@@ -38,6 +39,9 @@ class _HomePageState extends State<HomePage> {
   ShakeDetector? _shake;
   bool _postingArrival = false;
   bool _showMap = false;
+  Set<Polyline> _polylines = {};
+  Timer? _routeUpdateTimer;
+  String? _currentOnTheWayEventId;
 
   @override
   void initState() {
@@ -55,6 +59,8 @@ class _HomePageState extends State<HomePage> {
         _notifications.showLocal(n.title ?? 'Notificación', n.body ?? '');
       }
     });
+    // Verificar si hay eventos marcados como "en camino" y activar tracking
+    _checkAndStartRouteTracking();
   }
 
   Future<void> _onArrivedShake() async {
@@ -74,6 +80,7 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     _mapCtrl?.dispose();
     _shake?.stopListening();
+    _routeUpdateTimer?.cancel();
     super.dispose();
   }
 
@@ -313,27 +320,43 @@ class _HomePageState extends State<HomePage> {
           pinned: true,
           expandedHeight: 140,
           flexibleSpace: FlexibleSpaceBar(
-            title: Text(
-              'Bienvenido',
-              style: TextStyle(
-                // Texto: Blanco si es tema Claro, Negro si es tema Oscuro
-                color: isDark ? Colors.black : Colors.white,
-                fontWeight: FontWeight.bold, // Opcional, mejora la legibilidad
-              ),
-            ),
-            background: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    colorScheme.primary,
-                    isDark
-                        ? Color.lerp(colorScheme.primary, Colors.black, 0.3)!
-                        : Color.lerp(colorScheme.primary, Colors.white, 0.3)!,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+            background: Stack(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        colorScheme.primary,
+                        isDark
+                            ? Color.lerp(
+                                colorScheme.primary,
+                                Colors.black,
+                                0.3,
+                              )!
+                            : Color.lerp(
+                                colorScheme.primary,
+                                Colors.white,
+                                0.3,
+                              )!,
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
                 ),
-              ),
+                Positioned(
+                  left: 16,
+                  bottom: 16,
+                  child: Text(
+                    'Bienvenido',
+                    style: TextStyle(
+                      color: isDark ? Colors.black : Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 36,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           actions: [
@@ -1035,6 +1058,7 @@ class _HomePageState extends State<HomePage> {
             ),
             ...eventMarkers,
           },
+          polylines: _polylines,
           onTap: (position) {},
         );
       },
@@ -1102,6 +1126,72 @@ class _HomePageState extends State<HomePage> {
     }
 
     return markers;
+  }
+
+  // --- MÉTODOS PARA TRACKING DE RUTA "EN CAMINO" ---
+
+  // Verificar si hay eventos marcados como "en camino" al iniciar
+  Future<void> _checkAndStartRouteTracking() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    // Buscar eventos donde el usuario está marcado como "en camino"
+    final eventsSnapshot = await FirebaseFirestore.instance
+        .collection('events')
+        .where('participants', arrayContains: currentUser.uid)
+        .get();
+
+    for (var eventDoc in eventsSnapshot.docs) {
+      final onTheWayDoc = await eventDoc.reference
+          .collection('onTheWay')
+          .doc(currentUser.uid)
+          .get();
+
+      if (onTheWayDoc.exists && onTheWayDoc.data()?['isActive'] == true) {
+        // Encontramos un evento marcado como "en camino"
+        final eventData = eventDoc.data();
+        final lat = eventData['location']?['lat'] as double?;
+        final lng = eventData['location']?['lng'] as double?;
+
+        if (lat != null && lng != null) {
+          _currentOnTheWayEventId = eventDoc.id;
+          await _updateRoutePolyline(lat, lng);
+
+          // Iniciar actualización periódica cada 10 segundos
+          _routeUpdateTimer = Timer.periodic(
+            const Duration(seconds: 10),
+            (_) => _updateRoutePolyline(lat, lng),
+          );
+          break; // Solo un evento a la vez
+        }
+      }
+    }
+  }
+
+  // Actualizar la línea de ruta en el mapa
+  Future<void> _updateRoutePolyline(double eventLat, double eventLng) async {
+    try {
+      final currentLocation = await _location.getCurrentPosition();
+
+      if (currentLocation == null) return;
+
+      // Crear una línea entre la ubicación actual y el evento
+      final polyline = Polyline(
+        polylineId: const PolylineId('route_to_event'),
+        points: [currentLocation, LatLng(eventLat, eventLng)],
+        color: Colors.blue,
+        width: 5,
+        patterns: [PatternItem.dash(20), PatternItem.gap(10)],
+      );
+
+      if (mounted) {
+        setState(() {
+          _polylines = {polyline};
+        });
+      }
+    } catch (e) {
+      debugPrint('Error actualizando ruta: $e');
+    }
   }
 
   String _userInitial() {

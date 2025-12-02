@@ -391,6 +391,37 @@ class EventController {
       return [];
     }
   }
+
+  // --- MARCAR COMO "EN CAMINO" ---
+  Future<String?> setOnTheWay(String eventId, bool isOnTheWay) async {
+    if (currentUid == null) return 'Error de sesión';
+    try {
+      await _db
+          .collection('events')
+          .doc(eventId)
+          .collection('onTheWay')
+          .doc(currentUid)
+          .set({
+            'userId': currentUid,
+            'startedAt': FieldValue.serverTimestamp(),
+            'isActive': isOnTheWay,
+          });
+      return null;
+    } catch (e) {
+      debugPrint('Error marcando en camino: $e');
+      return 'Error al actualizar estado';
+    }
+  }
+
+  // --- OBTENER USUARIOS "EN CAMINO" ---
+  Stream<QuerySnapshot> getOnTheWayUsers(String eventId) {
+    return _db
+        .collection('events')
+        .doc(eventId)
+        .collection('onTheWay')
+        .where('isActive', isEqualTo: true)
+        .snapshots();
+  }
 }
 
 // Clase de ayuda para crear un QuerySnapshot falso

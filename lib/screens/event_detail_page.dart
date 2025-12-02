@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../controllers/event_controller.dart';
+import '../controllers/location_controller.dart';
 import 'location_picker_page.dart';
 import '../widgets/invite_friends_dialog.dart';
 import 'user_profile_page.dart';
@@ -24,6 +25,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
   final _eventCtrl = EventController();
   final _currentUser = FirebaseAuth.instance.currentUser;
   GoogleMapController? _mapController;
+  bool _isOnTheWay = false;
 
   // Formateador de fecha
   String _formatDate(Timestamp? timestamp) {
@@ -43,6 +45,26 @@ class _EventDetailPageState extends State<EventDetailPage> {
     if (diff.inMinutes < 60) return 'hace ${diff.inMinutes} min';
     if (diff.inHours < 24) return 'hace ${diff.inHours}h';
     return 'el ${DateFormat('dd/MM').format(date)}';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _checkIfOnTheWay();
+  }
+
+  Future<void> _checkIfOnTheWay() async {
+    if (_currentUser == null) return;
+    final doc = await FirebaseFirestore.instance
+        .collection('events')
+        .doc(widget.eventId)
+        .collection('onTheWay')
+        .doc(_currentUser!.uid)
+        .get();
+
+    if (doc.exists && doc.data()?['isActive'] == true) {
+      setState(() => _isOnTheWay = true);
+    }
   }
 
   @override
@@ -515,9 +537,48 @@ class _EventDetailPageState extends State<EventDetailPage> {
                                     ],
                                   ),
                                 )
-                              // CASO 2: EL EVENTO ESTÁ VIGENTE (Lógica original)
-                              : (isCreator
-                                    ? ElevatedButton.icon(
+                              // CASO 2: EL EVENTO ESTÁ VIGENTE
+                              : Column(
+                                  children: [
+                                    // Botón "En camino" (visible para TODOS los participantes, incluyendo el organizador)
+                                    if ((isCreator ||
+                                            participants.contains(
+                                              _currentUser?.uid,
+                                            )) &&
+                                        lat != null &&
+                                        lng != null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 12,
+                                        ),
+                                        child: ElevatedButton.icon(
+                                          onPressed: () =>
+                                              _toggleOnTheWay(lat, lng),
+                                          icon: Icon(
+                                            _isOnTheWay
+                                                ? Icons.navigation
+                                                : Icons.directions_walk,
+                                          ),
+                                          label: Text(
+                                            _isOnTheWay
+                                                ? 'Ya voy en camino ✓'
+                                                : 'Marcar como "En camino"',
+                                          ),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: _isOnTheWay
+                                                ? Colors.blue[50]
+                                                : Colors.green[50],
+                                            foregroundColor: _isOnTheWay
+                                                ? Colors.blue[700]
+                                                : Colors.green[700],
+                                            padding: const EdgeInsets.all(16),
+                                          ),
+                                        ),
+                                      ),
+
+                                    // Botón principal según el rol
+                                    if (isCreator)
+                                      ElevatedButton.icon(
                                         onPressed: () =>
                                             _confirmDelete(context, creatorId),
                                         icon: const Icon(Icons.delete_forever),
@@ -528,8 +589,11 @@ class _EventDetailPageState extends State<EventDetailPage> {
                                           padding: const EdgeInsets.all(16),
                                         ),
                                       )
-                                    : participants.contains(_currentUser?.uid)
-                                    ? OutlinedButton.icon(
+                                    else if (participants.contains(
+                                      _currentUser?.uid,
+                                    ))
+                                      // Botón "Salir del evento"
+                                      OutlinedButton.icon(
                                         onPressed: () => _confirmLeave(context),
                                         icon: const Icon(Icons.exit_to_app),
                                         label: const Text('Salir del evento'),
@@ -537,7 +601,8 @@ class _EventDetailPageState extends State<EventDetailPage> {
                                           padding: const EdgeInsets.all(16),
                                         ),
                                       )
-                                    : ElevatedButton.icon(
+                                    else
+                                      ElevatedButton.icon(
                                         onPressed: () => _confirmJoin(
                                           context,
                                           widget.eventId,
@@ -551,7 +616,9 @@ class _EventDetailPageState extends State<EventDetailPage> {
                                           foregroundColor: Colors.green[700],
                                           padding: const EdgeInsets.all(16),
                                         ),
-                                      )),
+                                      ),
+                                  ],
+                                ),
                         ),
                         // Espacio extra al final para que no quede pegado al borde
                         const SizedBox(height: 40),
@@ -607,6 +674,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                 ),
               ),
             },
+            polylines: const {},
             myLocationEnabled: true,
             myLocationButtonEnabled: false,
             zoomControlsEnabled: false,
@@ -637,6 +705,49 @@ class _EventDetailPageState extends State<EventDetailPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('No se pudo abrir Google Maps')),
+        );
+      }
+    }
+  }
+
+  // --- MARCAR/DESMARCAR "EN CAMINO" ---
+  Future<void> _toggleOnTheWay(double eventLat, double eventLng) async {
+    if (_currentUser == null) return;
+
+    final newState = !_isOnTheWay;
+
+    final error = await _eventCtrl.setOnTheWay(widget.eventId, newState);
+
+    if (error != null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error), backgroundColor: Colors.red),
+        );
+      }
+      return;
+    }
+
+    setState(() => _isOnTheWay = newState);
+
+    if (newState) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              '¡En camino! Ve al mapa principal para ver tu ruta actualizada en tiempo real',
+            ),
+            backgroundColor: Colors.blue,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Desmarcado de "En camino"'),
+            backgroundColor: Colors.grey,
+          ),
         );
       }
     }

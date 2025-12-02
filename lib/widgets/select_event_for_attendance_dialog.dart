@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:geolocator/geolocator.dart';
 import '../controllers/notification_controller.dart';
+import '../controllers/location_controller.dart';
+import '../controllers/event_controller.dart';
 
 class SelectEventForAttendanceDialog extends StatelessWidget {
   const SelectEventForAttendanceDialog({super.key});
@@ -246,13 +249,130 @@ class SelectEventForAttendanceDialog extends StatelessWidget {
     String eventTitle,
     String userId,
   ) async {
-    // Confirmar acción
+    // 1. Obtener ubicación actual del usuario
+    final locationCtrl = LocationController();
+    final currentLocation = await locationCtrl.getCurrentPosition();
+
+    if (currentLocation == null) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo obtener tu ubicación. Activa el GPS.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // 2. Obtener ubicación del evento
+    final eventDoc = await FirebaseFirestore.instance
+        .collection('events')
+        .doc(eventId)
+        .get();
+
+    if (!eventDoc.exists) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('El evento no existe'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final eventData = eventDoc.data()!;
+    final eventLat = eventData['location']?['lat'] as double?;
+    final eventLng = eventData['location']?['lng'] as double?;
+
+    if (eventLat == null || eventLng == null) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('El evento no tiene ubicación definida'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // 3. Calcular distancia
+    final eventCtrl = EventController();
+    final distanceInKm = eventCtrl.calculateDistance(
+      currentLocation.latitude,
+      currentLocation.longitude,
+      eventLat,
+      eventLng,
+    );
+
+    // 4. Validar que esté cerca (máximo 200 metros = 0.2 km)
+    const maxDistanceKm = 0.2;
+    if (distanceInKm > maxDistanceKm) {
+      final distanceInMeters = (distanceInKm * 1000).round();
+      if (!context.mounted) return;
+
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('⚠️ Demasiado lejos'),
+          content: Text(
+            'Estás a ${distanceInMeters}m del lugar del evento.\n\n'
+            'Debes estar en el lugar (máximo 200m de distancia) para confirmar tu llegada.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Entendido'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    // 5. Confirmar acción
+    final distanceInMeters = (distanceInKm * 1000).round();
     final confirm = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         title: const Text('Confirmar llegada'),
-        content: Text('¿Confirmas que llegaste a "$eventTitle"?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('¿Confirmas que llegaste a "$eventTitle"?'),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.check_circle,
+                    color: Colors.green.shade700,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Estás a ${distanceInMeters}m del lugar',
+                      style: TextStyle(
+                        color: Colors.green.shade700,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
