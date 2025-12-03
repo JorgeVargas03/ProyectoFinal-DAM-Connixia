@@ -58,11 +58,24 @@ El objetivo es promover nuevas amistades y la convivencia, facilitando que cualq
 - Roadmap: recuperación de contraseña, chat básico por evento, filtros por categoría/distancia, modo oscuro, i18n.
 
 ## Características
-- Autenticación con correo y contraseña (Firebase Auth).
+- Autenticación de usuarios (Firebase Authentication + Google Sign-In).
 - Inicio de sesión/registro con Google.
 - Validaciones de formularios.
 - UI adaptable.
 - Soporte de icono de Google con `flutter_svg` o asset local.
+- Persistencia y datos en Cloud Firestore.
+- Notificaciones push (Firebase Messaging) y notificaciones locales.
+- Integración de Google Maps y obtención de la ubicación (google_maps_flutter + geolocator).
+- Captura y selección de imágenes, recorte y compresión (image_picker, image_cropper, flutter_image_compress, mime).
+- Inicio con icono personalizado (flutter_launcher_icons).
+- Manejo de estado con Provider.
+- Preferencias locales (shared_preferences) para ajustes/flags.
+- Internacionalización/localización (flutter_localizations + intl).
+- Variables de entorno (flutter_dotenv) para configurar claves y endpoints.
+- Acciones por sacudida del dispositivo (shake).
+- Lanzar URLs externas (url_launcher).
+- Uso de SVGs (flutter_svg).
+- Realizar peticiones HTTP (http).
 
 ## Requisitos previos
 - Flutter 3.x y Dart 3.x instalados.
@@ -75,14 +88,46 @@ El objetivo es promover nuevas amistades y la convivencia, facilitando que cualq
 ## Dependencias principales
 Añade en 'pubspec.yaml':
 ```yaml
-dependencies:
-  flutter:
-    sdk: flutter
-  firebase_core:
-  firebase_auth:
-  google_sign_in:
-  flutter_svg: # opcional si usarás SVG del logo de Google
+flutter:
+  sdk: flutter
+flutter_localizations:
+  sdk: flutter
+cupertino_icons: ^1.0.8
+flutter_launcher_icons: ^0.14.4
+firebase_core: ^4.2.1
+cloud_firestore: ^6.1.0
+flutter_dotenv: ^6.0.0
+firebase_auth: ^6.1.2
+firebase_messaging: ^16.0.4
+flutter_local_notifications: ^19.5.0
+google_maps_flutter: ^2.14.0
+geolocator: ^14.0.2
+shake: ^3.0.0
+google_sign_in: ^7.2.0
+flutter_svg: ^2.2.2 # opcional si usarás SVG del logo de Google
+http: ^1.6.0
+image_picker: ^1.2.1
+mime: ^2.0.0
+image_cropper: ^11.0.0
+provider: ^6.1.5+1
+shared_preferences: ^2.5.3
+intl: ^0.20.2
+url_launcher: ^6.3.1
+flutter_image_compress: ^2.4.0
 ```
+
+Dev y herramientas relacionadas:
+
+```yaml
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter_lints: ^5.0.0
+change_app_package_name: ^1.5.0
+```
+
+---
 
 ## Configuración de plataforma
 
@@ -133,6 +178,9 @@ lib/
 - Si usas el logo oficial en SVG:
   - Instala `flutter_svg` y usa `SvgPicture.network` con placeholder.
 - Alternativa: descarga un PNG en 'assets/google.png' y decláralo en 'pubspec.yaml'.
+
+## Configura Google Maps:
+   - Crea un archivo en raiz `.env` e inserta la API key dentro.
 
 ## Solución de problemas
 - El SVG del logo no se muestra:
